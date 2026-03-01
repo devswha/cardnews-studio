@@ -1,0 +1,16 @@
+{
+  "name": "card-news-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Card-news YAML to PNG rendering pipeline",
+  "main": "render.js",
+  "scripts": {
+    "render": "node render.js",
+    "test": "node --test 'test/*.test.js'"
+  },
+  "dependencies": {
+    "handlebars": "^4.7.8",
+    "js-yaml": "^4.1.0",
+    "puppeteer": "^24.0.0"
+  }
+}

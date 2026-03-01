@@ -1,0 +1,422 @@
+/* ================================================================
+   WARM THEME — Light cream canvas + terracotta accents
+   Inspired by @imjieun.mkt card news style
+   Usage: node render.js spec.yaml --theme warm
+   ================================================================ */
+
+/* ============================================================
+   DESIGN TOKENS OVERRIDE
+   ============================================================ */
+:root {
+  /* Core Palette */
+  --color-primary: #C8856A;
+  --color-primary-dim: rgba(200, 133, 106, 0.12);
+  --color-secondary: #A66B52;
+  --color-secondary-dim: rgba(166, 107, 82, 0.12);
+
+  /* Backgrounds */
+  --color-bg-canvas: #F5EFE6;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-content: #F5EFE6;
+
+  /* Text */
+  --color-text-primary: #1A1A1A;
+  --color-text-body: #555555;
+  --color-text-muted: #999999;
+  --color-text-inverse: #FFFFFF;
+  --color-text-accent: #C8856A;
+
+  /* Borders */
+  --color-border: #E8E0D4;
+  --color-border-accent: #C8856A;
+
+  /* Semantic */
+  --color-success: #5BA67A;
+  --color-warning: #D4A44C;
+  --color-danger: #CF6B5E;
+  --color-info: #6BA3BE;
+
+  /* Shadows — softer for light theme */
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 30px rgba(200, 133, 106, 0.1);
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ============================================================
+   BODY
+   ============================================================ */
+body {
+  background: #E8E2D8;
+}
+
+/* ============================================================
+   INLINE CODE (global)
+   ============================================================ */
+code {
+  background: #1A1A2E;
+  color: #C8856A;
+  border-color: #333333;
+}
+
+/* Global highlight override */
+.highlight {
+  color: #C8856A !important;
+}
+
+/* ============================================================
+   COVER SLIDE
+   ============================================================ */
+.slide--cover {
+  background: #C8856A;
+  color: #1A1A1A;
+}
+
+.slide--cover::before {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+}
+
+.slide--cover::after {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+}
+
+.slide--cover h1,
+.slide--cover h2,
+.slide--cover p {
+  color: inherit;
+}
+
+.cover-title {
+  color: #1A1A1A;
+}
+
+.cover-subtitle {
+  color: rgba(26, 26, 26, 0.65);
+}
+
+.cover-tag.pill {
+  background: rgba(26, 26, 26, 0.85);
+  border-color: rgba(26, 26, 26, 0.9);
+  color: #FFFFFF;
+}
+
+.series-branding,
+.cover-author,
+.cover-author-handle {
+  color: rgba(26, 26, 26, 0.55);
+}
+
+/* ============================================================
+   CONTENT SLIDE
+   ============================================================ */
+.content-top-bar {
+  background: #C8856A;
+}
+
+.content-header {
+  background: #FFFFFF;
+  border-color: #E8E0D4;
+}
+
+.slide-title {
+  color: #1A1A1A;
+}
+
+.slide-subtitle {
+  color: #888888;
+}
+
+.page-number-circle {
+  border-color: transparent;
+  background: transparent;
+  color: #999999;
+  font-weight: 600;
+}
+
+.content-body {
+  background: #FFFFFF;
+  border-color: #E8E0D4;
+}
+
+/* ============================================================
+   CLOSING SLIDE
+   ============================================================ */
+.slide--closing {
+  background: var(--color-bg-canvas);
+  color: #1A1A1A;
+}
+
+.slide--closing::before {
+  background: radial-gradient(circle, rgba(200, 133, 106, 0.06) 0%, transparent 65%);
+}
+
+.slide--closing h1,
+.slide--closing h2,
+.slide--closing p {
+  color: inherit;
+}
+
+.closing-title {
+  color: #1A1A1A;
+}
+
+.closing-cta-section {
+  background: #FFFFFF;
+  border-color: #E8E0D4;
+  border-top: 3px solid #C8856A;
+  box-shadow: var(--shadow-card);
+}
+
+.preview-label {
+  color: #C8856A;
+}
+
+.preview-dots {
+  color: #CCCCCC;
+}
+
+/* ============================================================
+   CARD LIST
+   ============================================================ */
+.card-item {
+  background: #FFFFFF;
+  border-color: #E8E0D4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.card-item:hover {
+  border-color: #D8D0C4;
+}
+
+.card-icon {
+  background: rgba(200, 133, 106, 0.1);
+}
+
+.card-title {
+  color: #1A1A1A;
+}
+
+.card-description {
+  color: #555555;
+}
+
+.card-title .highlight,
+.card-description .highlight {
+  color: #C8856A;
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-block {
+  background: #FFFFFF;
+  border-color: #E8E0D4;
+}
+
+.table-header {
+  background: #FAF7F2;
+  color: #C8856A;
+  border-bottom-color: #E8E0D4;
+}
+
+.table-header--label {
+  color: #999999;
+}
+
+.table-row-label {
+  color: #1A1A1A;
+  background: #FFFFFF;
+  border-bottom-color: #F0EBE3;
+}
+
+.table-cell {
+  color: #555555;
+  background: #FFFFFF;
+  border-bottom-color: #F0EBE3;
+}
+
+/* ============================================================
+   BEFORE / AFTER
+   ============================================================ */
+.before-after {
+  border-color: #E8E0D4;
+}
+
+.before-after-card--before {
+  background: #FFF5F2;
+  border-right-color: #E8E0D4;
+}
+
+.before-after-card--after {
+  background: #F2FFF5;
+}
+
+.before-after-card--before .before-after-title {
+  color: #CF6B5E;
+}
+
+.before-after-card--after .before-after-title {
+  color: #5BA67A;
+}
+
+.before-after-description {
+  color: #555555;
+}
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+.progress-bar-label {
+  color: #1A1A1A;
+}
+
+.progress-bar-value {
+  color: #CF6B5E;
+}
+
+.progress-bar-track {
+  background: #E8E0D4;
+}
+
+.progress-bar-fill {
+  background: linear-gradient(90deg, #C8856A, #CF6B5E);
+}
+
+/* ============================================================
+   BAR LIST
+   ============================================================ */
+.bar-list-label {
+  color: #1A1A1A;
+}
+
+.bar-list-ratio {
+  color: #C8856A;
+}
+
+.bar-list-track {
+  background: #E8E0D4;
+}
+
+.bar-list-fill {
+  background: #C8856A;
+}
+
+/* ============================================================
+   STEP LIST
+   ============================================================ */
+.step-index {
+  background: #C8856A;
+  color: #FFFFFF;
+  border-color: #E8E0D4;
+}
+
+.step-content {
+  background: #FFFFFF;
+  border-color: #E8E0D4;
+}
+
+.step-title {
+  color: #1A1A1A;
+}
+
+.step-description {
+  color: #555555;
+}
+
+.step-code {
+  background: #1A1A2E;
+  color: #C8856A;
+  border-color: #333333;
+}
+
+/* ============================================================
+   TIP BOX
+   ============================================================ */
+.tip-box {
+  background: #FFFFFF;
+  border: 1px solid #E8E0D4;
+  border-left: 6px solid #C8856A;
+}
+
+.tip-box-label {
+  color: #C8856A;
+}
+
+.tip-box-content {
+  color: #555555;
+}
+
+.tip-box-content .highlight {
+  color: #C8856A;
+}
+
+/* ============================================================
+   INFO BOX
+   ============================================================ */
+.info-box {
+  background: #FFFFFF;
+  border: 1px solid #E8E0D4;
+  border-left: 6px solid #C8856A;
+}
+
+.info-box-title {
+  color: #C8856A;
+}
+
+.info-box-content {
+  color: #555555;
+}
+
+.info-box-content .highlight {
+  color: #C8856A;
+}
+
+/* ============================================================
+   HIGHLIGHT BANNER
+   ============================================================ */
+.highlight-banner {
+  background: rgba(200, 133, 106, 0.06);
+  border-color: rgba(200, 133, 106, 0.2);
+}
+
+.highlight-banner::before {
+  background: radial-gradient(circle, rgba(200, 133, 106, 0.04) 0%, transparent 70%);
+}
+
+.highlight-banner-content {
+  color: #1A1A1A;
+  font-weight: 700;
+}
+
+.highlight-banner-content strong,
+.highlight-banner-content b {
+  color: #C8856A;
+}
+
+.highlight-banner-content code {
+  background: #1A1A2E;
+  color: #C8856A;
+  border-color: #333333;
+}
+
+/* ============================================================
+   TEXT BLOCK
+   ============================================================ */
+.text-block {
+  color: #555555;
+}
+
+.text-block--muted {
+  color: #999999;
+}
+
+.text-block--accent {
+  color: #C8856A;
+}
+
+/* ============================================================
+   GLOBAL CREDIT
+   ============================================================ */
+.global-credit {
+  color: rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,417 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css");
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+/* ============================================================
+   RESET
+   ============================================================ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================
+   BODY — render surface matches the slide exactly
+   ============================================================ */
+body {
+  width: var(--slide-width, 1080px);
+  height: var(--slide-height, 1350px);
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-base);
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* ============================================================
+   SLIDE BASE
+   ============================================================ */
+.slide {
+  width: var(--slide-width, 1080px);
+  height: var(--slide-height, 1350px);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-canvas);
+}
+
+/* ============================================================
+   GLOBAL TYPOGRAPHY
+   ============================================================ */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text-primary);
+  font-weight: 800;
+  word-break: keep-all;
+}
+
+p {
+  font-size: 28px;
+  line-height: 1.65;
+  color: var(--color-text-body);
+}
+
+strong {
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+code {
+  font-family: var(--font-code);
+  background: var(--color-bg-code);
+  color: var(--color-primary);
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  font-size: 0.88em;
+}
+
+/* ============================================================
+   COVER SLIDE
+   ============================================================ */
+.slide--cover {
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  padding: var(--padding-y) var(--padding-x);
+  justify-content: space-between;
+  align-items: flex-start;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle radial glow in upper-right — purely decorative */
+.slide--cover::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(184, 255, 1, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Bottom-left subtle glow */
+.slide--cover::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  left: -80px;
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, rgba(184, 255, 1, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.slide--cover h1,
+.slide--cover h2,
+.slide--cover p {
+  color: inherit;
+}
+
+/* Tag pill — lime border, lime text */
+.cover-header {
+  z-index: 10;
+  position: relative;
+}
+
+.cover-tag.pill {
+  display: inline-block;
+  background: var(--color-primary-dim);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: 12px 28px;
+  border-radius: var(--radius-full);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Hero — title + subtitle */
+.cover-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  z-index: 10;
+  position: relative;
+  padding: var(--space-2xl) 0;
+}
+
+.cover-hero--has-illustration {
+  justify-content: flex-start;
+  padding-top: 40px;
+}
+
+.cover-title {
+  font-size: 82px;
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -1.5px;
+  color: var(--color-text-primary);
+  margin-bottom: 32px;
+  word-break: keep-all;
+  white-space: pre-line;
+}
+
+.cover-subtitle {
+  font-size: 36px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cover-subtitle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+/* Cover illustration — positioned relative to .slide--cover */
+.cover-image-container {
+  position: absolute;
+  bottom: 60px;
+  right: 40px;
+  z-index: 5;
+}
+
+.cover-illustration {
+  display: block;
+  width: 680px;
+  height: auto;
+  border-radius: 0;
+}
+
+/* Footer */
+.cover-footer {
+  z-index: 10;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.series-branding {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   CONTENT SLIDE — card-in-card layout
+   The .content-top-bar + .content-header + .content-body form
+   a single rounded card sitting on the dark canvas.
+   ============================================================ */
+.slide--content {
+  padding: 40px var(--padding-x) var(--padding-x);
+  background: var(--color-bg-canvas);
+  position: relative;
+  flex-direction: column;
+}
+
+/* Lime accent bar — top edge of the card */
+.content-top-bar {
+  height: 4px;
+  background: var(--color-primary);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  flex-shrink: 0;
+}
+
+/* Header region — upper portion of the card */
+.content-header {
+  padding: 48px 48px 36px;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.header-text-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.slide-title {
+  font-size: 56px;
+  font-weight: 900;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+  word-break: keep-all;
+}
+
+.slide-subtitle {
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+/* Page number pill — lime border, lime text */
+.page-indicator {
+  margin-left: 36px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.page-number-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-dim);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-family: var(--font-code);
+}
+
+/* Body region — lower portion of the card */
+.content-body {
+  padding: 32px 48px 48px;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 36px;
+}
+
+/* ============================================================
+   CLOSING SLIDE — raw canvas, centered, lime accents
+   ============================================================ */
+.slide--closing {
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  padding: var(--padding-y) var(--padding-x);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Centered lime glow */
+.slide--closing::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(184, 255, 1, 0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.slide--closing h1,
+.slide--closing h2,
+.slide--closing p {
+  color: inherit;
+}
+
+.closing-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  justify-content: space-between;
+  z-index: 10;
+  position: relative;
+}
+
+.closing-header {
+  width: 100%;
+}
+
+.closing-title {
+  font-size: 68px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  color: var(--color-text-primary);
+  margin-bottom: 20px;
+  word-break: keep-all;
+}
+
+/* CTA section — dark elevated card with lime border */
+.closing-cta-section {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: var(--radius-xl);
+  padding: 52px 60px;
+  width: 100%;
+  box-shadow: var(--shadow-glow);
+}
+
+/* Footer — Next Episode label + dots */
+.closing-footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.series-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.preview-label {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.preview-dots {
+  font-size: 28px;
+  color: var(--color-text-muted);
+  letter-spacing: 4px;
+}
+
+/* ============================================================
+   GLOBAL CREDIT — bottom-right watermark on every slide
+   ============================================================ */
+.global-credit {
+  position: fixed;
+  bottom: 16px;
+  right: 48px;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(136, 136, 136, 0.5);
+  letter-spacing: 0.5px;
+  z-index: 100;
+  pointer-events: none;
+}

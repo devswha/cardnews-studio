@@ -1,0 +1,33 @@
+<div class="slide slide--cover">
+  <div class="cover-header">
+    <span class="cover-tag pill">{{meta.tag}}</span>
+  </div>
+
+  <div class="cover-hero{{#if meta.cover_illustration_uri}} cover-hero--has-illustration{{else if meta.cover_illustration}} cover-hero--has-illustration{{/if}}">
+    <h1 class="cover-title">{{slide.title}}</h1>
+    {{#if slide.subtitle}}
+    <p class="cover-subtitle">{{#if slide.subtitle_icon_uri}}<img src="{{{slide.subtitle_icon_uri}}}" alt="" class="cover-subtitle-icon" />{{/if}}{{slide.subtitle}}</p>
+    {{/if}}
+  </div>
+
+  {{#if meta.cover_illustration_uri}}
+  <div class="cover-image-container">
+    <img src="{{{meta.cover_illustration_uri}}}" alt="" class="cover-illustration">
+  </div>
+  {{else if meta.cover_illustration}}
+  <div class="cover-image-container">
+    <img src="assets/illustrations/{{meta.cover_illustration}}" alt="" class="cover-illustration">
+  </div>
+  {{/if}}
+
+  <div class="cover-footer">
+    <div class="series-branding">
+      {{#if meta.author}}
+      <span class="cover-author">{{meta.author}}</span>
+      {{#if meta.author_handle}}
+      <span class="cover-author-handle">{{meta.author_handle}}</span>
+      {{/if}}
+      {{/if}}
+    </div>
+  </div>
+</div>

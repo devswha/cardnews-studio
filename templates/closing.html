@@ -1,0 +1,28 @@
+<div class="slide slide--closing">
+  <div class="closing-container">
+    <div class="closing-header">
+      <h2 class="closing-title">{{slide.title}}</h2>
+      {{#if slide.subtitle}}
+      <p class="closing-subtitle">{{slide.subtitle}}</p>
+      {{/if}}
+    </div>
+
+    <div class="closing-cta-section">
+      {{{blocks_html}}}
+    </div>
+
+    <div class="closing-footer">
+      <div class="series-preview">
+        <span class="preview-label">Next Episode</span>
+        <span class="preview-dots">...</span>
+      </div>
+      
+      {{#if meta.author}}
+      <div class="closing-credits">
+        <span class="credit-author">{{meta.author}}</span>
+        <span class="credit-handle">{{meta.author_handle}}</span>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+</div>

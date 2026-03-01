@@ -1,0 +1,6 @@
+node_modules/
+output/
+.omc/
+samples/
+image.png
+image_1.png

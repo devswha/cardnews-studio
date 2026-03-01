@@ -1,0 +1,19 @@
+<div class="slide slide--content">
+  <div class="content-top-bar"></div>
+  
+  <div class="content-header">
+    <div class="header-text-group">
+      <h2 class="slide-title">{{slide.title}}</h2>
+      {{#if slide.subtitle}}
+      <p class="slide-subtitle">{{slide.subtitle}}</p>
+      {{/if}}
+    </div>
+    <div class="page-indicator">
+      <span class="page-number-circle">{{page_label}}</span>
+    </div>
+  </div>
+
+  <div class="content-body">
+    {{{blocks_html}}}
+  </div>
+</div>
