@@ -16,6 +16,43 @@ const STYLE_PROMPT = `Style requirements:
 - Tech/developer themed
 - The illustration should look like it naturally belongs on a #121212 dark surface`;
 
+async function makeTransparent(imgPath, targetHex = '#121212', fuzz = 38) {
+  // Try magick (ImageMagick 7) → convert (ImageMagick 6) → sharp (Node.js fallback)
+  const { execFileSync } = require('child_process');
+  for (const cmd of ['magick', 'convert']) {
+    try {
+      const args = cmd === 'magick'
+        ? [imgPath, '-fuzz', '15%', '-transparent', targetHex, imgPath]
+        : [imgPath, '-fuzz', '15%', '-transparent', targetHex, imgPath];
+      execFileSync(cmd, args, { stdio: 'pipe' });
+      console.log(`Transparency applied (${cmd})`);
+      return;
+    } catch {}
+  }
+  // sharp fallback
+  try {
+    const sharp = require('sharp');
+    const { data, info } = await sharp(imgPath).raw().toBuffer({ resolveWithObject: true });
+    const { width, height, channels } = info;
+    const tr = parseInt(targetHex.slice(1, 3), 16);
+    const tg = parseInt(targetHex.slice(3, 5), 16);
+    const tb = parseInt(targetHex.slice(5, 7), 16);
+    const pixels = Buffer.alloc(width * height * 4);
+    for (let i = 0; i < width * height; i++) {
+      const si = i * channels, di = i * 4;
+      const r = data[si], g = data[si + 1], b = data[si + 2];
+      const a = channels === 4 ? data[si + 3] : 255;
+      const match = Math.abs(r - tr) <= fuzz && Math.abs(g - tg) <= fuzz && Math.abs(b - tb) <= fuzz;
+      pixels[di] = r; pixels[di + 1] = g; pixels[di + 2] = b;
+      pixels[di + 3] = match ? 0 : a;
+    }
+    await sharp(pixels, { raw: { width, height, channels: 4 } }).png().toFile(imgPath);
+    console.log('Transparency applied (sharp)');
+  } catch (e) {
+    console.warn(`Transparency skipped: ${e.message}`);
+  }
+}
+
 async function loadApiKey() {
   const candidates = [
     path.resolve(process.cwd(), ".env"),
@@ -158,6 +195,9 @@ async function generateCover(specPath, options = {}) {
   const imgPath = path.join(imgDir, imgName);
   await fs.writeFile(imgPath, imageBuffer);
   console.log(`Saved: ${imgPath}`);
+
+  // Post-process: make #121212 background transparent
+  await makeTransparent(imgPath);
 
   await updateSpecIllustration(specPath, imgName);
   console.log(`Updated spec: cover_illustration = "${imgName}"`);

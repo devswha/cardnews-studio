@@ -28,7 +28,7 @@
   --color-text-accent: #C8856A;
 
   /* Borders */
-  --color-border: #E8E0D4;
+  --color-border: #C4B8A8;
   --color-border-accent: #C8856A;
 
   /* Semantic */
@@ -38,9 +38,9 @@
   --color-info: #6BA3BE;
 
   /* Shadows — softer for light theme */
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.06);
-  --shadow-glow: 0 0 30px rgba(200, 133, 106, 0.1);
-  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.10);
+  --shadow-glow: 0 0 30px rgba(200, 133, 106, 0.12);
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* ============================================================
@@ -115,7 +115,7 @@ code {
 
 .content-header {
   background: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
 }
 
 .slide-title {
@@ -135,7 +135,7 @@ code {
 
 .content-body {
   background: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
 }
 
 /* ============================================================
@@ -162,7 +162,7 @@ code {
 
 .closing-cta-section {
   background: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
   border-top: 3px solid #C8856A;
   box-shadow: var(--shadow-card);
 }
@@ -180,7 +180,7 @@ code {
    ============================================================ */
 .card-item {
   background: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
@@ -210,13 +210,13 @@ code {
    ============================================================ */
 .table-block {
   background: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
 }
 
 .table-header {
   background: #FAF7F2;
   color: #C8856A;
-  border-bottom-color: #E8E0D4;
+  border-bottom-color: #C4B8A8;
 }
 
 .table-header--label {
@@ -239,12 +239,12 @@ code {
    BEFORE / AFTER
    ============================================================ */
 .before-after {
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
 }
 
 .before-after-card--before {
   background: #FFF5F2;
-  border-right-color: #E8E0D4;
+  border-right-color: #C4B8A8;
 }
 
 .before-after-card--after {
@@ -275,7 +275,7 @@ code {
 }
 
 .progress-bar-track {
-  background: #E8E0D4;
+  background: #C4B8A8;
 }
 
 .progress-bar-fill {
@@ -294,7 +294,7 @@ code {
 }
 
 .bar-list-track {
-  background: #E8E0D4;
+  background: #C4B8A8;
 }
 
 .bar-list-fill {
@@ -304,15 +304,19 @@ code {
 /* ============================================================
    STEP LIST
    ============================================================ */
+.step-list {
+  justify-content: flex-start;
+}
+
 .step-index {
   background: #C8856A;
   color: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
 }
 
 .step-content {
   background: #FFFFFF;
-  border-color: #E8E0D4;
+  border-color: #C4B8A8;
 }
 
 .step-title {
@@ -334,7 +338,7 @@ code {
    ============================================================ */
 .tip-box {
   background: #FFFFFF;
-  border: 1px solid #E8E0D4;
+  border: 1px solid #C4B8A8;
   border-left: 6px solid #C8856A;
 }
 
@@ -355,7 +359,7 @@ code {
    ============================================================ */
 .info-box {
   background: #FFFFFF;
-  border: 1px solid #E8E0D4;
+  border: 1px solid #C4B8A8;
   border-left: 6px solid #C8856A;
 }
 

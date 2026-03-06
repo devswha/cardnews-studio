@@ -10,6 +10,9 @@ const infoBox = require("./info-box");
 const highlightBanner = require("./highlight-banner");
 const stepList = require("./step-list");
 const text = require("./text");
+const numberStat = require("./number-stat");
+const quoteBox = require("./quote-box");
+const iconGrid = require("./icon-grid");
 
 const registry = Object.freeze({
   "card-list": cardList,
@@ -24,6 +27,9 @@ const registry = Object.freeze({
   "highlight-banner": highlightBanner,
   "step-list": stepList,
   text,
+  "number-stat": numberStat,
+  "quote-box": quoteBox,
+  "icon-grid": iconGrid,
 });
 
 function getBlockRenderer(type) {

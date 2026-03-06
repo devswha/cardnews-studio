@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card News Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1>Card News</h1>
+      </div>
+      <div class="sidebar-search">
+        <input
+          type="search"
+          id="specSearch"
+          class="spec-search-input"
+          placeholder="Search specs..."
+          aria-label="Search specs"
+        >
+        <div class="spec-search-meta" id="specSearchMeta">0 specs</div>
+      </div>
+      <div class="spec-list" id="specList"></div>
+      <div class="sidebar-footer">
+        <select class="theme-select" id="themeSelect">
+          <option value="">dark (default)</option>
+        </select>
+        <button class="render-btn" id="renderBtn" disabled>Render All</button>
+      </div>
+    </div>
+    <div class="editor-panel hidden" id="editorPanel">
+      <div class="editor-header">
+        <span class="editor-filename" id="editorFilename">spec.yaml</span>
+        <div class="editor-actions">
+          <span class="editor-status" id="editorStatus">Ready</span>
+          <button class="editor-btn save" id="saveBtn">Save</button>
+          <button class="editor-btn save" id="saveRenderBtn">Save &amp; Render All</button>
+        </div>
+      </div>
+      <div class="validation-panel hidden" id="validationPanel"></div>
+      <div class="editor-form" id="editorForm">
+        <!-- Meta section -->
+        <div class="meta-section" id="metaSection"></div>
+        <!-- Slide list -->
+        <div class="slide-list" id="slideList"></div>
+        <!-- Active slide form -->
+        <div id="slideFormContainer"></div>
+      </div>
+    </div>
+    <div class="preview" id="preview">
+      <div class="placeholder" id="placeholder">Select a spec and click Render</div>
+      <div class="preview-status hidden" id="previewStatus"></div>
+      <div class="preview-image hidden" id="previewImage">
+        <img id="slideImg" src="" alt="Slide preview">
+      </div>
+      <div class="preview-nav hidden" id="previewNav">
+        <button class="nav-btn" id="prevBtn" aria-label="Previous slide">&#8249;</button>
+        <span class="slide-counter" id="slideCounter">1 / 1</span>
+        <button class="nav-btn" id="nextBtn" aria-label="Next slide">&#8250;</button>
+      </div>
+      <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-text" id="loadingText">Rendering...</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <script src="app-helpers.js"></script>
+  <script src="block-schemas.js"></script>
+  <script src="schema-defaults.js"></script>
+  <script src="spec-validation.js"></script>
+  <script src="form-state.js"></script>
+  <script src="form-ui.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

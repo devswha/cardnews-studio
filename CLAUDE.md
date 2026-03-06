@@ -25,6 +25,24 @@ node render.js specs/topic-{slug}.yaml --theme warm
 
 ---
 
+## Path Conventions
+
+All skills assume cwd is `card-news/`. Skills are located at `.claude/skills/{name}/SKILL.md`.
+
+| Resource | Path (relative to card-news/) |
+|----------|-------------------------------|
+| Thread files | `../threads/{category}/{NN}-{slug}.md` |
+| Thread index | `../threads/index.md` |
+| YAML specs | `specs/topic-{slug}.yaml` |
+| Rendered PNGs | `output/topic-{slug}/01.png ~ NN.png` |
+| Cover illustrations | `assets/illustrations/{slug}-cover.png` |
+| Humanizer patterns | `../humanizer-korean/patterns/*.md` |
+| source_file in YAML | `../threads/{category}/{NN}-{slug}.md` |
+
+Legacy specs may use other `source_file` formats (`thread-tips.md#10`, `threads/tips/12-tailscale.md`). `generate-cover.js` handles fallback resolution for these.
+
+---
+
 ## 프로젝트 구조
 
 ```
@@ -53,11 +71,17 @@ card-news/
 │       ├── table.js
 │       ├── progress-bar.js
 │       ├── bar-list.js
-│       └── text.js
+│       ├── text.js
+│       ├── number-stat.js   # 큰 숫자/통계 블록
+│       ├── quote-box.js     # 인용문 블록
+│       └── icon-grid.js     # 아이콘 그리드 블록
 ├── templates/
 │   ├── base.html           # HTML 래퍼 (CSS 주입 + 글로벌 푸터)
 │   ├── cover.html          # 커버 슬라이드
 │   ├── content.html        # 콘텐츠 슬라이드 (공용)
+│   ├── content-split.html  # 좌우 분할 레이아웃
+│   ├── content-hero.html   # 큰 제목 강조 레이아웃
+│   ├── content-minimal.html # 여백 중심 레이아웃
 │   └── closing.html        # 클로징 슬라이드
 └── styles/
     ├── tokens.css          # 디자인 토큰 (색상, 간격, 그림자, 타이포)
@@ -204,7 +228,7 @@ cover → problem → solution → howto → closing
 cover → problem → solution → howto → advanced → workflow → closing
 ```
 
-### 레이아웃 종류 (9종)
+### 레이아웃 종류 (12종)
 
 | 레이아웃 | 용도 | 렌더링 템플릿 |
 |---------|------|-------------|
@@ -216,13 +240,63 @@ cover → problem → solution → howto → advanced → workflow → closing
 | `comparison` | 심화 비교 | content.html |
 | `advanced` | 고급 팁 | content.html |
 | `workflow` | 실전 루틴 | content.html |
+| `split` | 좌우 분할 (매거진 스타일) | content-split.html |
+| `hero` | 큰 제목 강조 (임팩트) | content-hero.html |
+| `minimal` | 여백 중심 (인용/통계) | content-minimal.html |
 | `closing` | 요약/마무리 | closing.html |
 
-cover, closing 외 모든 레이아웃은 content.html 사용 (제목+부제+블록 영역+페이지 번호).
+기본 content 레이아웃 외에 3가지 추가 레이아웃으로 시각적 다양성을 높일 수 있다.
+
+#### split 레이아웃
+
+좌측 35%에 제목/부제, 우측 65%에 블록을 배치하는 매거진 스타일. 시각적 변화를 주기 좋다.
+
+**추천 블록**: card-list, number-stat, quote-box, icon-grid, text, tip-box, info-box, step-list (2개 이하)
+**비추천 블록**: before-after, table, terminal-block, code-editor (우측 칼럼이 ~624px로 좁아 레이아웃이 깨질 수 있음)
+
+```yaml
+- slide: 3
+  layout: split
+  title: "좌측 제목"
+  subtitle: "좌측 부제"
+  blocks:
+    - type: icon-grid
+      columns: 2
+      items: [...]
+```
+
+#### hero 레이아웃
+
+상단 45%를 큰 제목 영역(그라데이션 액센트 배경)으로, 하단을 컴팩트한 블록 영역으로 구성. "핵심 인사이트" 슬라이드에 적합.
+
+```yaml
+- slide: 4
+  layout: hero
+  title: "큰 제목"
+  subtitle: "보조 설명"
+  blocks:
+    - type: number-stat
+      value: "3x"
+      label: "핵심 수치"
+```
+
+#### minimal 레이아웃
+
+상단 바/카드 테두리 없이 배경만으로 구성. 콘텐츠가 가운데 정렬. 인용문, 단일 통계 등 여백이 필요한 슬라이드에 적합.
+
+```yaml
+- slide: 5
+  layout: minimal
+  title: "핵심"
+  blocks:
+    - type: quote-box
+      content: "인용문 텍스트"
+      author: "출처"
+```
 
 ---
 
-## 블록 타입 레퍼런스 (12종)
+## 블록 타입 레퍼런스 (15종)
 
 ### card-list - 이모지 카드 목록
 
@@ -372,6 +446,41 @@ cover, closing 외 모든 레이아웃은 content.html 사용 (제목+부제+블
   style: normal | muted | accent
 ```
 
+### number-stat - 큰 숫자/통계 블록
+
+큰 숫자를 강조 표시. hero, minimal 레이아웃과 잘 어울린다.
+
+```yaml
+- type: number-stat
+  value: "42%"              # 큰 숫자 (필수)
+  label: "비용 절감 효과"     # 설명 텍스트 (필수)
+  highlight_word: "절감"     # 라임색 강조 (선택)
+```
+
+### quote-box - 인용문 블록
+
+인용문과 출처를 시각적으로 강조. minimal 레이아웃과 잘 어울린다.
+
+```yaml
+- type: quote-box
+  content: "인용문 텍스트"    # 인용문 (필수)
+  author: "출처"             # 출처 (선택)
+  style: default | accent    # accent: 배경 틴트 추가 (선택)
+```
+
+### icon-grid - 아이콘 그리드 블록
+
+2x2 또는 3xN 그리드로 아이템을 배치. card-list의 컴팩트 대안. split 레이아웃과 잘 어울린다.
+
+```yaml
+- type: icon-grid
+  columns: 2                 # 2 또는 3 (기본: 2)
+  items:
+    - emoji: "🚀"
+      title: "항목 제목"
+      description: "설명"    # 선택
+```
+
 ---
 
 ## 콘텐츠 작성 규칙
@@ -393,6 +502,9 @@ cover, closing 외 모든 레이아웃은 content.html 사용 (제목+부제+블
 | howto | 바로 따라하기 | terminal-block + tip-box |
 | advanced | 심화 | card-list + info-box |
 | workflow | 실전 적용 | step-list (3개) |
+| split | 매거진 스타일 | icon-grid + tip-box |
+| hero | 핵심 인사이트 | number-stat 또는 highlight-banner |
+| minimal | 여백 강조 | quote-box 또는 number-stat |
 | closing | 기억에 남기기 | card-list (3개) + highlight-banner |
 
 ### 블록 조합 규칙
@@ -415,6 +527,9 @@ cover, closing 외 모든 레이아웃은 content.html 사용 (제목+부제+블
 | 주의사항, 보충 팁 | tip-box / info-box |
 | 핵심 한 줄 요약 | highlight-banner |
 | 항목별 비교 | table |
+| 큰 숫자/통계 강조 | number-stat |
+| 인용문, 명언 | quote-box |
+| 기능/도구 그리드 | icon-grid |
 
 ---
 

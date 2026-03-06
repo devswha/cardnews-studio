@@ -626,3 +626,123 @@
   font-weight: 800;
   font-size: 28px;
 }
+
+/* ====================================
+   NUMBER STAT BLOCK
+   ==================================== */
+.number-stat {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.number-stat__value {
+  font-size: 96px;
+  font-weight: 900;
+  color: var(--color-primary);
+  line-height: 1;
+  letter-spacing: -3px;
+}
+
+.number-stat__label {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--color-text-body);
+  margin-top: 16px;
+  line-height: 1.4;
+}
+
+.number-stat__label .highlight {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ====================================
+   QUOTE BOX BLOCK
+   ==================================== */
+.quote-box {
+  position: relative;
+  padding: 48px 48px 40px 56px;
+  border-left: 6px solid var(--color-primary);
+}
+
+.quote-box--accent {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-radius: 16px;
+}
+
+.quote-box__mark {
+  position: absolute;
+  top: 8px;
+  left: 20px;
+  font-size: 120px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  font-family: Georgia, serif;
+  pointer-events: none;
+}
+
+.quote-box__content {
+  font-size: 32px;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+.quote-box__author {
+  display: block;
+  font-size: 22px;
+  font-weight: 400;
+  font-style: normal;
+  color: var(--color-text-muted);
+  text-align: right;
+  margin-top: 20px;
+}
+
+/* ====================================
+   ICON GRID BLOCK
+   ==================================== */
+.icon-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.icon-grid--cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.icon-grid--cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.icon-grid__item {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-grid__icon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.icon-grid__title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.icon-grid__desc {
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}

@@ -1,1 +1,282 @@
-/* Deprecated: Layout styles have been moved to base.css as part of the redesign. */
+/* ====================================
+   SPLIT LAYOUT — Two-Column Magazine Style
+   ==================================== */
+.slide--content-split {
+  width: 1080px;
+  height: 1350px;
+  background: var(--color-bg-canvas);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 40px var(--padding-x) var(--padding-x);
+}
+
+.slide--content-split .content-top-bar {
+  height: 4px;
+  background: var(--color-primary);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  flex-shrink: 0;
+}
+
+.split-container {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Vertical accent spine — magazine divider with gradient fade */
+.split-container::before {
+  content: '';
+  position: absolute;
+  top: 48px;
+  bottom: 48px;
+  left: 35%;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--color-primary) 35%, transparent) 20%,
+    color-mix(in srgb, var(--color-primary) 35%, transparent) 80%,
+    transparent
+  );
+  z-index: 2;
+}
+
+.split-left {
+  width: 35%;
+  padding: 48px 44px 48px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  position: relative;
+}
+
+/* Subtle radial glow for left-column atmosphere */
+.split-left::before {
+  content: '';
+  position: absolute;
+  bottom: 20%;
+  left: -20px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(184, 255, 1, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.split-left .slide-title {
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  letter-spacing: -1px;
+  position: relative;
+  z-index: 1;
+}
+
+.split-left .slide-subtitle {
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+.split-right {
+  width: 65%;
+  padding: 40px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+}
+
+/* Enlarge icon-grid inside split for better space filling */
+.split-right .icon-grid {
+  flex: 1;
+  gap: 28px;
+  align-content: center;
+}
+
+.split-right .icon-grid__item {
+  padding: 44px 28px;
+}
+
+.split-right .icon-grid__icon {
+  font-size: 56px;
+}
+
+.split-page-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  margin-left: 0;
+  z-index: 3;
+}
+
+/* ====================================
+   HERO LAYOUT — Bold Statement Style
+   ==================================== */
+.slide--content-hero {
+  width: 1080px;
+  height: 1350px;
+  background: var(--color-bg-canvas);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 40px var(--padding-x) var(--padding-x);
+}
+
+.slide--content-hero .content-top-bar {
+  height: 4px;
+  background: var(--color-primary);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  flex-shrink: 0;
+}
+
+.hero-zone {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 64px 60px;
+  text-align: center;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Stronger gradient overlay — 15%→5% for real visual impact */
+.hero-accent-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 15%, transparent),
+    color-mix(in srgb, var(--color-primary) 5%, transparent)
+  );
+  z-index: 0;
+}
+
+/* Radial glow — echoes cover's atmospheric depth */
+.hero-zone::after {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(184, 255, 1, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-title {
+  font-size: 68px;
+  font-weight: 900;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+  letter-spacing: -2px;
+}
+
+.hero-subtitle {
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-top: 20px;
+}
+
+.hero-page-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  margin-left: 0;
+  z-index: 2;
+}
+
+.hero-body {
+  flex: 1;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  border-top: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 32px;
+}
+
+/* ====================================
+   MINIMAL LAYOUT — Clean & Centered
+   ==================================== */
+.slide--content-minimal {
+  width: 1080px;
+  height: 1350px;
+  background: var(--color-bg-canvas);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Centered radial glow — echoes closing slide atmosphere */
+.slide--content-minimal::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(184, 255, 1, 0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.minimal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 48px 60px 0;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.minimal-label {
+  font-size: 22px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--color-text-muted);
+}
+
+.minimal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 80px 80px;
+  gap: 32px;
+  position: relative;
+  z-index: 1;
+}

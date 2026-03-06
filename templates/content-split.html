@@ -1,0 +1,17 @@
+<div class="slide slide--content-split">
+  <div class="content-top-bar"></div>
+  <div class="split-container">
+    <div class="split-left">
+      <h2 class="slide-title">{{slide.title}}</h2>
+      {{#if slide.subtitle}}
+      <p class="slide-subtitle">{{slide.subtitle}}</p>
+      {{/if}}
+    </div>
+    <div class="split-right">
+      {{{blocks_html}}}
+    </div>
+    <div class="page-indicator split-page-indicator">
+      <span class="page-number-circle">{{page_label}}</span>
+    </div>
+  </div>
+</div>

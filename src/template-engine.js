@@ -4,16 +4,15 @@ const Handlebars = require("handlebars");
 const { fileToDataUriAsync, safePath } = require("./utils/mime");
 
 const REQUIRED_TEMPLATES = ["cover", "content", "closing"];
-const OPTIONAL_TEMPLATES = ["base"];
+const OPTIONAL_TEMPLATES = ["base", "content-split", "content-hero", "content-minimal"];
 const STYLE_FILES = ["tokens.css", "base.css", "layouts.css", "components.css"];
 
 function templateNameForLayout(layout) {
-  if (layout === "cover") {
-    return "cover";
-  }
-  if (layout === "closing") {
-    return "closing";
-  }
+  if (layout === "cover") return "cover";
+  if (layout === "closing") return "closing";
+  if (layout === "split") return "content-split";
+  if (layout === "hero") return "content-hero";
+  if (layout === "minimal") return "content-minimal";
   return "content";
 }
 
@@ -135,7 +134,11 @@ class TemplateEngine {
     await this.load();
 
     const layoutTemplateName = templateNameForLayout(slide.layout);
-    const template = this.templates[layoutTemplateName];
+    const template = this.templates[layoutTemplateName] || this.templates["content"];
+
+    if (!this.templates[layoutTemplateName]) {
+      console.warn(`[warn] Template "${layoutTemplateName}" not found for layout "${slide.layout}", falling back to "content"`);
+    }
 
     if (!template) {
       throw new Error(`No template compiled for layout "${slide.layout}"`);

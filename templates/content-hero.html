@@ -1,0 +1,18 @@
+<div class="slide slide--content-hero">
+  <div class="content-top-bar"></div>
+  <div class="hero-zone">
+    <div class="hero-accent-bg"></div>
+    <div class="hero-content">
+      <h2 class="hero-title">{{slide.title}}</h2>
+      {{#if slide.subtitle}}
+      <p class="hero-subtitle">{{slide.subtitle}}</p>
+      {{/if}}
+    </div>
+    <div class="page-indicator hero-page-indicator">
+      <span class="page-number-circle">{{page_label}}</span>
+    </div>
+  </div>
+  <div class="hero-body">
+    {{{blocks_html}}}
+  </div>
+</div>

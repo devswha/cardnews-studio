@@ -1,0 +1,13 @@
+<div class="slide slide--content-minimal">
+  <div class="minimal-header">
+    {{#if slide.title}}
+    <span class="minimal-label">{{slide.title}}</span>
+    {{/if}}
+    <div class="page-indicator">
+      <span class="page-number-circle">{{page_label}}</span>
+    </div>
+  </div>
+  <div class="minimal-body">
+    {{{blocks_html}}}
+  </div>
+</div>
