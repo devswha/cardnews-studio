@@ -124,7 +124,7 @@ Rendered slide {N}:
 
 ## Important Notes
 
-- Always run from the `card-news/` directory (cd if needed)
+- Always run from the `cardnews-studio/` directory (cd if needed)
 - Cover illustration transparency post-processing is critical — without it, the dark background creates a visible box on the cover slide
 - The `--slide` flag is useful for iterating on a single slide without re-rendering everything
 - Rendered PNGs are @2x (2160x2700px) for high-DPI displays

@@ -1,8 +1,8 @@
 {
-  "name": "card-news-renderer",
+  "name": "cardnews-studio",
   "version": "0.1.0",
   "private": true,
-  "description": "Card-news YAML to PNG rendering pipeline",
+  "description": "Card-news studio with YAML renderer and web editor",
   "main": "render.js",
   "scripts": {
     "render": "node render.js",

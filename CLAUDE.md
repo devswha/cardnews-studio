@@ -27,9 +27,9 @@ node render.js specs/topic-{slug}.yaml --theme warm
 
 ## Path Conventions
 
-All skills assume cwd is `card-news/`. Skills are located at `.claude/skills/{name}/SKILL.md`.
+All skills assume cwd is `cardnews-studio/`. Skills are located at `.claude/skills/{name}/SKILL.md`.
 
-| Resource | Path (relative to card-news/) |
+| Resource | Path (relative to cardnews-studio/) |
 |----------|-------------------------------|
 | Thread files | `../threads/{category}/{NN}-{slug}.md` |
 | Thread index | `../threads/index.md` |
@@ -46,7 +46,7 @@ Legacy specs may use other `source_file` formats (`thread-tips.md#10`, `threads/
 ## 프로젝트 구조
 
 ```
-card-news/
+cardnews-studio/
 ├── render.js               # 엔트리포인트 (CLI 파싱 + 파이프라인 조율)
 ├── package.json            # node >=18, handlebars + js-yaml + puppeteer
 ├── specs/                  # YAML 스펙 파일

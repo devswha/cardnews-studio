@@ -3,7 +3,7 @@
 const path = require("path");
 const fs = require("fs");
 
-// Enforce cwd to card-news/ for transitive process.cwd() calls
+// Enforce cwd to repo root for transitive process.cwd() calls
 // (template-engine.js:88 uses process.cwd() for illustration resolution)
 process.chdir(path.resolve(__dirname));
 

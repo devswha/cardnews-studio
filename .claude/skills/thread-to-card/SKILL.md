@@ -182,7 +182,7 @@ Spec created:
 - The closing slide should leave a memorable final message
 - Prefer concrete emojis over generic ones (use tool-specific emojis when possible)
 - Match the thread's tone in all text content
-- `source_file` uses `../threads/{category}/{NN}-{slug}.md` (relative to card-news/), per CLAUDE.md Path Conventions. Legacy specs may use other formats; generate-cover.js handles fallback resolution.
+- `source_file` uses `../threads/{category}/{NN}-{slug}.md` (relative to cardnews-studio/), per CLAUDE.md Path Conventions. Legacy specs may use other formats; generate-cover.js handles fallback resolution.
 
 
 ## Examples

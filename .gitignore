@@ -1,6 +1,7 @@
 node_modules/
 output/
 .omc/
+.omx/
 samples/
 image.png
 image_1.png
