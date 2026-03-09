@@ -16,6 +16,8 @@
   var editorFilename = document.getElementById("editorFilename");
   var editorStatus = document.getElementById("editorStatus");
   var validationPanel = document.getElementById("validationPanel");
+  var newSpecBtn = document.getElementById("newSpecBtn");
+  var deleteSpecBtn = document.getElementById("deleteSpecBtn");
   var saveBtn = document.getElementById("saveBtn");
   var saveRenderBtn = document.getElementById("saveRenderBtn");
   var renderBtn = document.getElementById("renderBtn");
@@ -31,6 +33,7 @@
   var prevBtn = document.getElementById("prevBtn");
   var nextBtn = document.getElementById("nextBtn");
   var slideCounter = document.getElementById("slideCounter");
+  var creationFlowRoot = document.getElementById("creationFlowRoot");
   var loadingOverlay = document.getElementById("loadingOverlay");
   var loadingText = document.getElementById("loadingText");
   var progressFill = document.getElementById("progressFill");
@@ -46,10 +49,20 @@
   var previewIndex = 0;
   var lastSelectedSlideIndex = 0;
   var selectedTheme = "";
+  var pendingSlideAiAction = "";
+  var creationResources = {
+    aiStatus: { available: false, checked: false, reason: "" },
+    templates: [],
+    loadPromise: null,
+  };
   var busy = {
     saving: false,
     rendering: false,
+    generatingSlide: false,
     loadingSpec: false,
+    preparingCreationFlow: false,
+    creatingSpec: false,
+    deletingSpec: false,
   };
 
   // ── Shared UI helpers ───────────────────────────────────────────────────────
@@ -74,6 +87,126 @@
     var error = new Error(message);
     error.isHandled = true;
     return error;
+  }
+
+  function isCreationFlowOpen() {
+    return Boolean(
+      window.CreationFlow &&
+      typeof window.CreationFlow.isOpen === "function" &&
+      window.CreationFlow.isOpen()
+    );
+  }
+
+  function parseJsonResponse(res) {
+    if (!res) {
+      return Promise.reject(new Error("No response received."));
+    }
+
+    return res.json().catch(function () {
+      return {};
+    }).then(function (data) {
+      if (res.ok) {
+        return data;
+      }
+
+      var message = data && data.error
+        ? data.error
+        : (res.status ? "Request failed: " + res.status : "Request failed.");
+      var error = new Error(message);
+      error.status = res.status;
+      error.response = data;
+      throw error;
+    });
+  }
+
+  function normalizeAiStatus(data, fallbackError) {
+    var safeData = data && typeof data === "object" ? data : {};
+    var reason = safeData.reason || safeData.error || fallbackError || "";
+    return {
+      available: Boolean(safeData.available),
+      checked: true,
+      reason: reason,
+    };
+  }
+
+  function normalizeTemplates(data) {
+    var rawTemplates = Array.isArray(data)
+      ? data
+      : (data && Array.isArray(data.templates) ? data.templates : []);
+
+    return rawTemplates
+      .filter(function (template) {
+        return template && typeof template === "object";
+      })
+      .map(function (template, index) {
+        var copy = Object.assign({}, template);
+        if (!copy.id) {
+          copy.id = String(copy.slug || copy.name || copy.title || ("template-" + index));
+        }
+        return copy;
+      });
+  }
+
+  function loadAiStatus(options) {
+    var opts = options || {};
+    if (creationResources.aiStatus.checked && !opts.force) {
+      return Promise.resolve(creationResources.aiStatus);
+    }
+
+    return fetch("/api/ai-status")
+      .then(parseJsonResponse)
+      .then(function (data) {
+        creationResources.aiStatus = normalizeAiStatus(data);
+        return creationResources.aiStatus;
+      })
+      .catch(function (err) {
+        creationResources.aiStatus = normalizeAiStatus(null, err && err.message ? err.message : "");
+        return creationResources.aiStatus;
+      });
+  }
+
+  function loadCreationTemplates(options) {
+    var opts = options || {};
+    if (creationResources.templates.length && !opts.force) {
+      return Promise.resolve(creationResources.templates.slice());
+    }
+
+    return fetch("/api/templates")
+      .then(parseJsonResponse)
+      .then(function (data) {
+        creationResources.templates = normalizeTemplates(data);
+        return creationResources.templates.slice();
+      })
+      .catch(function () {
+        creationResources.templates = [];
+        return [];
+      });
+  }
+
+  function loadCreationResources(options) {
+    var opts = options || {};
+    if (creationResources.loadPromise && !opts.force) {
+      return creationResources.loadPromise;
+    }
+
+    creationResources.loadPromise = Promise.all([
+      loadAiStatus(opts),
+      loadCreationTemplates(opts),
+    ]).then(function (results) {
+      return {
+        aiStatus: results[0],
+        templates: results[1],
+      };
+    }).finally(function () {
+      creationResources.loadPromise = null;
+    });
+
+    return creationResources.loadPromise;
+  }
+
+  function setPreparingCreationFlow(isPreparing) {
+    busy.preparingCreationFlow = Boolean(isPreparing);
+    refreshUiState();
   }
 
   function showToast(message, tone, title) {
@@ -193,17 +326,37 @@
     }
   }
 
-  function refreshUiState() {
-    var isBusy = busy.saving || busy.rendering || busy.loadingSpec;
-    var canActOnSpec = Boolean(state.slug) && !isBusy;
+  function rerenderSlideFormPreservingFocus() {
+    var focusState = captureFocusState();
+    FormUI.renderSlideForm(slideFormContainer, state, renderCallbacks);
+    restoreFocusState(focusState);
+  }
 
+  function refreshUiState() {
+    var isBusy =
+      busy.saving ||
+      busy.rendering ||
+      busy.generatingSlide ||
+      busy.loadingSpec ||
+      busy.preparingCreationFlow ||
+      busy.creatingSpec ||
+      busy.deletingSpec;
+    var flowOpen = isCreationFlowOpen();
+    var canActOnSpec = Boolean(state.slug) && !isBusy && !flowOpen;
+
+    if (newSpecBtn) {
+      newSpecBtn.disabled = isBusy || flowOpen;
+    }
+    if (deleteSpecBtn) {
+      deleteSpecBtn.disabled = !canActOnSpec;
+    }
     saveBtn.disabled = !canActOnSpec || !state.isDirty();
     saveRenderBtn.disabled = !canActOnSpec;
     renderBtn.disabled = !canActOnSpec;
-    themeSelect.disabled = busy.rendering || busy.loadingSpec;
-    specSearchEl.disabled = busy.loadingSpec;
+    themeSelect.disabled = busy.rendering || busy.generatingSlide || busy.loadingSpec || busy.preparingCreationFlow || busy.creatingSpec || busy.deletingSpec || flowOpen;
+    specSearchEl.disabled = busy.generatingSlide || busy.loadingSpec || busy.preparingCreationFlow || busy.creatingSpec || busy.deletingSpec || flowOpen;
     specListEl.querySelectorAll(".spec-item").forEach(function (item) {
-      item.disabled = busy.loadingSpec;
+      item.disabled = busy.generatingSlide || busy.loadingSpec || busy.preparingCreationFlow || busy.creatingSpec || busy.deletingSpec || flowOpen;
     });
 
     if (state.isDirty()) {
@@ -216,6 +369,14 @@
 
     if (busy.loadingSpec) {
       setEditorStatus("Loading…", "info");
+    } else if (busy.preparingCreationFlow) {
+      setEditorStatus("Preparing…", "info");
+    } else if (busy.creatingSpec) {
+      setEditorStatus("Creating…", "info");
+    } else if (busy.deletingSpec) {
+      setEditorStatus("Deleting…", "warning");
+    } else if (busy.generatingSlide) {
+      setEditorStatus("Generating slide…", "info");
     } else if (busy.rendering) {
       setEditorStatus("Rendering…", "info");
     } else if (busy.saving) {
@@ -255,6 +416,17 @@
     themeSelect.value = selectedTheme || "";
   }
 
+  function createSpecCatalogStub(slug) {
+    return Helpers.normalizeSpecItem({
+      slug: slug,
+      title: slug,
+      theme: "",
+      totalSlides: state.getSlides().length,
+      hasOutput: false,
+      outputSlides: [],
+    });
+  }
+
   function syncActiveSpecFromState() {
     if (!activeSpec) {
       return;
@@ -264,6 +436,36 @@
     activeSpec.title = String(meta.title || activeSpec.slug || "Untitled");
     activeSpec.theme = meta.theme ? String(meta.theme) : "";
     activeSpec.totalSlides = state.getSlides().length;
+  }
+
+  function clearActiveSpecUi(message) {
+    activeSpec = null;
+    lastSelectedSlideIndex = 0;
+    editorFilename.textContent = "spec.yaml";
+    editorPanel.classList.add("hidden");
+    validationPanel.innerHTML = "";
+    validationPanel.classList.add("hidden");
+    metaSection.innerHTML = "";
+    slideList.innerHTML = "";
+    slideFormContainer.innerHTML = "";
+    selectedTheme = "";
+    syncThemeSelect();
+    clearPreview(message || Helpers.previewPlaceholderForSpec(null));
+    renderSpecList();
+    refreshUiState();
+  }
+
+  function syncEditorSelectionFromState() {
+    if (!state.slug) {
+      return;
+    }
+
+    activeSpec = findSpec(state.slug) || activeSpec || createSpecCatalogStub(state.slug);
+    editorFilename.textContent = state.slug + ".yaml";
+    editorPanel.classList.remove("hidden");
+    syncActiveSpecFromState();
+    selectedTheme = Helpers.resolveThemeSelection(activeSpec, availableThemes);
+    syncThemeSelect();
   }
 
   // ── Spec List ───────────────────────────────────────────────────────────────
@@ -279,7 +481,9 @@
     if (filteredSpecs.length === 0) {
       var empty = document.createElement("div");
       empty.className = "spec-empty";
-      empty.textContent = "No specs match your search.";
+      empty.textContent = specCatalog.length === 0
+        ? "No specs yet. Create one with + New."
+        : "No specs match your search.";
       specListEl.appendChild(empty);
       return;
     }
@@ -289,7 +493,13 @@
       item.type = "button";
       item.className = "spec-item" + (activeSpec && activeSpec.slug === spec.slug ? " active" : "");
       item.dataset.slug = spec.slug;
-      item.disabled = busy.loadingSpec;
+      item.disabled =
+        busy.generatingSlide ||
+        busy.loadingSpec ||
+        busy.preparingCreationFlow ||
+        busy.creatingSpec ||
+        busy.deletingSpec ||
+        isCreationFlowOpen();
 
       var title = document.createElement("div");
       title.className = "spec-title";
@@ -323,7 +533,7 @@
   }
 
   function loadSpecList() {
-    fetch("/api/specs")
+    return fetch("/api/specs")
       .then(function (res) {
         if (!res.ok) {
           throw new Error("Failed to load specs: " + res.status);
@@ -332,15 +542,19 @@
       })
       .then(function (specs) {
         specCatalog = (Array.isArray(specs) ? specs : []).map(Helpers.normalizeSpecItem);
-        if (activeSpec) {
+        if (state.slug) {
+          activeSpec = findSpec(state.slug) || activeSpec;
+        } else if (activeSpec) {
           activeSpec = findSpec(activeSpec.slug);
         }
         renderSpecList();
+        return specCatalog;
       })
       .catch(function (err) {
         specListEl.innerHTML = '<div class="spec-empty">Failed to load specs.</div>';
         specSearchMetaEl.textContent = "Load failed";
         console.error("Failed to load specs:", err);
+        throw err;
       });
   }
 
@@ -363,7 +577,14 @@
   }
 
   function selectSpec(slug) {
-    if (busy.loadingSpec) {
+    if (
+      busy.generatingSlide ||
+      busy.loadingSpec ||
+      busy.preparingCreationFlow ||
+      busy.creatingSpec ||
+      busy.deletingSpec ||
+      isCreationFlowOpen()
+    ) {
       return;
     }
 
@@ -398,6 +619,296 @@
   }
 
   specSearchEl.addEventListener("input", renderSpecList);
+
+  function getExistingSlugs() {
+    return specCatalog.map(function (spec) {
+      return spec.slug;
+    }).filter(Boolean);
+  }
+
+  function extractCreateSpec(request) {
+    if (!request || typeof request !== "object") {
+      return undefined;
+    }
+
+    if (request.spec && typeof request.spec === "object" && !Array.isArray(request.spec)) {
+      return request.spec;
+    }
+    if (request.draft && request.draft.spec && typeof request.draft.spec === "object") {
+      return request.draft.spec;
+    }
+    if (request.generated && request.generated.spec && typeof request.generated.spec === "object") {
+      return request.generated.spec;
+    }
+    if (request.result && request.result.spec && typeof request.result.spec === "object") {
+      return request.result.spec;
+    }
+
+    return undefined;
+  }
+
+  function normalizeCreateRequest(request) {
+    if (typeof request === "string") {
+      return { slug: request };
+    }
+    if (request && typeof request === "object") {
+      return {
+        slug: request.slug || (request.draft && request.draft.slug) || (request.result && request.result.slug),
+        spec: extractCreateSpec(request),
+      };
+    }
+    return { slug: "" };
+  }
+
+  function requestGeneratedDraft(request) {
+    var payload = request && typeof request === "object"
+      ? Object.assign({}, request)
+      : { text: String(request || "") };
+
+    payload.text = String(payload.text || payload.rawText || payload.content || "").trim();
+    if (!payload.text) {
+      return Promise.reject(new Error("Enter text to generate a draft."));
+    }
+    if (payload.theme === undefined) {
+      payload.theme = selectedTheme || null;
+    }
+
+    return fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(parseJsonResponse)
+      .then(function (data) {
+        if (data && data.spec && typeof data.spec === "object") {
+          return data;
+        }
+        return { spec: data };
+      });
+  }
+
+  function requestSlideVariant(request) {
+    var payload = request && typeof request === "object"
+      ? Object.assign({}, request)
+      : {};
+
+    if (!payload.spec || typeof payload.spec !== "object" || Array.isArray(payload.spec)) {
+      return Promise.reject(new Error("A valid spec is required."));
+    }
+
+    if (!Number.isInteger(payload.slideIndex)) {
+      return Promise.reject(new Error("A valid slide index is required."));
+    }
+
+    if (!payload.action) {
+      return Promise.reject(new Error("A slide action is required."));
+    }
+
+    return fetch("/api/generate-slide-variant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(parseJsonResponse)
+      .then(function (data) {
+        if (data && data.slide && typeof data.slide === "object") {
+          return data;
+        }
+        return { slide: data };
+      });
+  }
+
+  function requestFetchedArticle(request) {
+    var payload = request && typeof request === "object"
+      ? Object.assign({}, request)
+      : { url: String(request || "") };
+
+    payload.url = String(payload.url || "").trim();
+    if (!payload.url) {
+      return Promise.reject(new Error("Enter a URL to fetch."));
+    }
+
+    return fetch("/api/fetch-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(parseJsonResponse)
+      .then(function (data) {
+        if (data && typeof data === "object") {
+          var article = data.article && typeof data.article === "object"
+            ? data.article
+            : data;
+          return Object.assign({}, data, {
+            title: data.title || article.title || "",
+            content: data.content || data.text || article.content || article.text || "",
+            source: data.source || article.source || payload.url,
+            url: data.url || article.url || payload.url,
+          });
+        }
+        return {};
+      });
+  }
+
+  function buildCreationFlowOptions(resources) {
+    var safeResources = resources || {};
+    var aiStatus = safeResources.aiStatus || creationResources.aiStatus || { available: false, checked: false, reason: "" };
+    var templates = Array.isArray(safeResources.templates)
+      ? safeResources.templates.slice()
+      : creationResources.templates.slice();
+    var defaultDescription = aiStatus.available
+      ? "Start blank, use a template, or generate a draft from text or a URL."
+      : "Start blank or use a template. AI text and URL generation are unavailable right now.";
+
+    return {
+      root: creationFlowRoot || null,
+      mountNode: creationFlowRoot || null,
+      portalTarget: creationFlowRoot || null,
+      container: creationFlowRoot || null,
+      existingSlugs: getExistingSlugs,
+      getExistingSlugs: getExistingSlugs,
+      templates: templates,
+      getTemplates: loadCreationTemplates,
+      loadTemplates: loadCreationTemplates,
+      fetchTemplates: loadCreationTemplates,
+      aiStatus: aiStatus,
+      aiAvailable: Boolean(aiStatus.available),
+      isAiAvailable: Boolean(aiStatus.available),
+      getAiStatus: loadAiStatus,
+      loadAiStatus: loadAiStatus,
+      checkAiAvailability: loadAiStatus,
+      generateSpec: requestGeneratedDraft,
+      onGenerate: requestGeneratedDraft,
+      fetchArticle: requestFetchedArticle,
+      onFetchArticle: requestFetchedArticle,
+      onFetchUrl: requestFetchedArticle,
+      onCreate: createSpecFromFlow,
+      createSpec: createSpecFromFlow,
+      onSaveDraft: createSpecFromFlow,
+      onOpenDraft: createSpecFromFlow,
+      refreshSpecList: loadSpecList,
+      onRefreshSpecs: loadSpecList,
+      activeSlug: state.slug || "",
+      currentTheme: selectedTheme || "",
+      getTheme: function () {
+        return selectedTheme || "";
+      },
+      description: defaultDescription,
+    };
+  }
+
+  function createSpecFromFlow(request) {
+    var payload = normalizeCreateRequest(request);
+
+    return withBusyFlag("creatingSpec", function () {
+      return state.createSpec(payload.slug, payload.spec)
+        .then(function (data) {
+          return loadSpecList().then(function () {
+            syncEditorSelectionFromState();
+            applySpecPreview(activeSpec);
+            renderSpecList();
+            setPreviewStatus("Created “" + state.slug + "”.", "success");
+            showToast("Created “" + state.slug + "”.", "success", "Created");
+            return data;
+          });
+        })
+        .catch(function (err) {
+          setPreviewStatus("Create failed: " + err.message, "error");
+          showToast("Create failed: " + err.message, "error", "Create failed");
+          throw err;
+        });
+    });
+  }
+
+  function openCreationFlow() {
+    if (
+      busy.generatingSlide ||
+      busy.loadingSpec ||
+      busy.preparingCreationFlow ||
+      busy.creatingSpec ||
+      busy.deletingSpec ||
+      busy.saving ||
+      busy.rendering ||
+      isCreationFlowOpen()
+    ) {
+      return;
+    }
+
+    if (state.isDirty() && !confirm("Unsaved changes will be lost. Continue?")) {
+      return;
+    }
+
+    if (!window.CreationFlow || typeof window.CreationFlow.open !== "function") {
+      showToast("Creation dialog unavailable. Try again in a moment.", "warning", "New spec");
+      return;
+    }
+
+    setPreparingCreationFlow(true);
+    loadCreationResources({ force: true })
+      .then(function (resources) {
+        var flowPromise;
+        refreshUiState();
+        setPreparingCreationFlow(false);
+        flowPromise = window.CreationFlow.open(buildCreationFlowOptions(resources));
+        refreshUiState();
+        return Promise.resolve(flowPromise).finally(function () {
+          refreshUiState();
+        });
+      })
+      .catch(function (err) {
+        setPreparingCreationFlow(false);
+        showToast("Failed to open the creation flow: " + err.message, "error", "New spec");
+        throw err;
+      })
+      .catch(function () {
+        // handled above
+      });
+  }
+
+  function deleteCurrentSpec() {
+    var slug = state.slug;
+
+    if (!slug) {
+      return;
+    }
+
+    if (
+      !confirm(
+        state.isDirty()
+          ? "Delete “" + slug + "”? Unsaved changes will be lost and rendered output will be removed."
+          : "Delete “" + slug + "”? This removes the spec and its rendered output."
+      )
+    ) {
+      return;
+    }
+
+    withBusyFlag("deletingSpec", function () {
+      return state.deleteSpec(slug)
+        .then(function () {
+          clearActiveSpecUi("Deleted “" + slug + "”. Select another spec or create a new one.");
+          return loadSpecList();
+        })
+        .then(function () {
+          setPreviewStatus("Deleted “" + slug + "”.", "success");
+          showToast("Deleted “" + slug + "”.", "success", "Deleted");
+        })
+        .catch(function (err) {
+          setPreviewStatus("Delete failed: " + err.message, "error");
+          showToast("Delete failed: " + err.message, "error", "Delete failed");
+          throw createHandledError(err.message);
+        });
+    }).catch(function () {
+      // handled above
+    });
+  }
+
+  if (newSpecBtn) {
+    newSpecBtn.addEventListener("click", openCreationFlow);
+  }
+
+  if (deleteSpecBtn) {
+    deleteSpecBtn.addEventListener("click", deleteCurrentSpec);
+  }
 
   // ── Theme List ──────────────────────────────────────────────────────────────
 
@@ -450,14 +961,35 @@
     onSelectSlide: function (idx) {
       syncPreviewToSelectedSlide(idx);
     },
+    onAiSlideAction: function (idx, slideNumber, action) {
+      void idx;
+      void slideNumber;
+      generateSlideVariantForActiveSlide(action);
+    },
+    isSlideAiBusy: function () {
+      return busy.generatingSlide || Boolean(pendingSlideAiAction);
+    },
+    isSlideAiActionRunning: function (action) {
+      return pendingSlideAiAction === action;
+    },
+    isSlideAiActionDisabled: function (idx, slide, action) {
+      void slide;
+      return action === "suggest-layout" && (idx <= 0 || idx >= state.getSlides().length - 1);
+    },
   };
 
   state.onChange(function () {
     var focusState = captureFocusState();
 
+    if (!state.slug) {
+      activeSpec = null;
+    } else {
+      syncEditorSelectionFromState();
+    }
+
     FormUI.renderMetaEditor(metaSection, state);
     FormUI.renderSlideList(slideList, state, renderCallbacks);
-    FormUI.renderSlideForm(slideFormContainer, state, renderCallbacks);
+    rerenderSlideFormPreservingFocus();
 
     syncActiveSpecFromState();
     if (activeSpec) renderSpecList();
@@ -521,7 +1053,7 @@
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      if (state.slug && !busy.saving && !busy.rendering) {
+      if (state.slug && !busy.saving && !busy.rendering && !busy.generatingSlide && !busy.preparingCreationFlow && !isCreationFlowOpen()) {
         doSave().catch(function () {
           // handled above
         });
@@ -530,6 +1062,70 @@
   });
 
   // ── Single Slide Render ─────────────────────────────────────────────────────
+
+  function humanizeSlideAction(action) {
+    return {
+      rewrite: "Rewrite",
+      shorten: "Shorten",
+      "punch-up": "Punch Up",
+      "suggest-layout": "Suggest Layout",
+    }[action] || "Generate";
+  }
+
+  function generateSlideVariantForActiveSlide(action) {
+    var slideIndex = state.selectedSlideIndex;
+    var currentSlide = state.getSlide(slideIndex);
+
+    if (!state.slug || !currentSlide || busy.generatingSlide) {
+      return;
+    }
+
+    try {
+      ensureSpecIsValid();
+    } catch (err) {
+      return;
+    }
+
+    pendingSlideAiAction = action;
+    refreshUiState();
+    rerenderSlideFormPreservingFocus();
+
+    withBusyFlag("generatingSlide", function () {
+      return requestSlideVariant({
+        spec: state.toJSON(),
+        slideIndex: slideIndex,
+        action: action,
+      })
+        .then(function (data) {
+          var nextSlide = data && data.slide ? data.slide : data;
+          if (!nextSlide || typeof nextSlide !== "object") {
+            throw new Error("Slide generation returned an invalid response.");
+          }
+
+          state.replaceSlide(slideIndex, nextSlide);
+          setPreviewStatus(humanizeSlideAction(action) + " updated slide " + (slideIndex + 1) + ".", "success");
+          showToast(
+            humanizeSlideAction(action) + " applied to slide " + (slideIndex + 1) + ". Render to preview changes.",
+            "success",
+            "AI update"
+          );
+        })
+        .catch(function (err) {
+          setPreviewStatus("Slide AI failed: " + err.message, "error");
+          showToast("Slide AI failed: " + err.message, "error", "AI update failed");
+          throw createHandledError(err.message);
+        })
+        .finally(function () {
+          pendingSlideAiAction = "";
+          refreshUiState();
+          rerenderSlideFormPreservingFocus();
+        });
+    }).catch(function () {
+      pendingSlideAiAction = "";
+      refreshUiState();
+      rerenderSlideFormPreservingFocus();
+    });
+  }
 
   function renderSingleSlide(slideNumber) {
     if (!state.slug || busy.rendering) return;
@@ -768,6 +1364,7 @@
 
   // Arrow keys for preview navigation
   document.addEventListener("keydown", function (e) {
+    if (busy.preparingCreationFlow || isCreationFlowOpen()) return;
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
     if (e.key === "ArrowLeft") {
       prevBtn.click();
@@ -805,4 +1402,7 @@
   refreshUiState();
   loadSpecList();
   loadThemes();
+  loadCreationResources().catch(function () {
+    // Blank creation should remain available even if optional resources fail to load.
+  });
 })();

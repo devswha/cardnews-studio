@@ -94,6 +94,108 @@ describe("editor e2e", () => {
     await page.close();
   });
 
+  it("reorders slide cards through the drag-and-drop wiring", async () => {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1600, height: 1200, deviceScaleFactor: 1 });
+    await page.goto(baseUrl, { waitUntil: "networkidle0", timeout: 15000 });
+
+    await page.click('[data-slug="topic-oh-my-codex"]');
+    await page.waitForSelector(".slide-card-drag-handle");
+
+    const initialTitles = await page.$$eval(".slide-card .slide-card-title", (els) =>
+      els.slice(0, 2).map((el) => el.textContent.trim())
+    );
+    assert.equal(initialTitles.length, 2);
+
+    await page.evaluate(() => {
+      const sortable = document.getElementById("slideList").__slideSortable;
+      if (!sortable || !sortable.options || typeof sortable.options.onEnd !== "function") {
+        throw new Error("Slide sortable wiring is unavailable.");
+      }
+      sortable.options.onEnd({ oldIndex: 0, newIndex: 1 });
+    });
+
+    await page.waitForFunction(
+      (firstTitle, secondTitle) => {
+        const titles = Array.from(document.querySelectorAll(".slide-card .slide-card-title"))
+          .slice(0, 2)
+          .map((el) => el.textContent.trim());
+        const active = document.querySelector(".slide-card.active .slide-card-title");
+        return titles[0] === secondTitle &&
+          titles[1] === firstTitle &&
+          active &&
+          active.textContent.trim() === firstTitle;
+      },
+      {},
+      initialTitles[0],
+      initialTitles[1]
+    );
+
+    await page.close();
+  });
+
+  it("reorders blocks through the drag-and-drop wiring", async () => {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1600, height: 1200, deviceScaleFactor: 1 });
+    await page.goto(baseUrl, { waitUntil: "networkidle0", timeout: 15000 });
+
+    await page.click('[data-slug="topic-oh-my-codex"]');
+    await page.waitForSelector(".slide-card:nth-of-type(5)");
+    await page.click(".slide-card:nth-of-type(5)");
+    await page.waitForSelector(".block-drag-handle");
+
+    const initialTypes = await page.$$eval(".block-header .block-type-badge", (els) =>
+      els.slice(0, 2).map((el) => el.textContent.trim())
+    );
+    assert.deepEqual(initialTypes, ["card-list", "terminal-block"]);
+
+    await page.evaluate(() => {
+      const sortable = document.getElementById("slideFormContainer").__blockSortable;
+      if (!sortable || !sortable.options || typeof sortable.options.onEnd !== "function") {
+        throw new Error("Block sortable wiring is unavailable.");
+      }
+      sortable.options.onEnd({ oldIndex: 0, newIndex: 1 });
+    });
+
+    await page.waitForFunction(() => {
+      const types = Array.from(document.querySelectorAll(".block-header .block-type-badge"))
+        .slice(0, 2)
+        .map((el) => el.textContent.trim());
+      return types[0] === "terminal-block" && types[1] === "card-list";
+    });
+
+    await page.close();
+  });
+
+  it("shows slide AI quick actions and disables layout suggestions on boundary slides", async () => {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1600, height: 1200, deviceScaleFactor: 1 });
+    await page.goto(baseUrl, { waitUntil: "networkidle0", timeout: 15000 });
+
+    await page.click('[data-slug="topic-oh-my-codex"]');
+    await page.waitForSelector(".slide-ai-btn[data-action=\"rewrite\"]");
+
+    const firstSlideState = await page.evaluate(() => ({
+      rewriteExists: Boolean(document.querySelector('.slide-ai-btn[data-action="rewrite"]')),
+      shortenExists: Boolean(document.querySelector('.slide-ai-btn[data-action="shorten"]')),
+      punchExists: Boolean(document.querySelector('.slide-ai-btn[data-action="punch-up"]')),
+      suggestDisabled: document.querySelector('.slide-ai-btn[data-action="suggest-layout"]')?.disabled || false,
+    }));
+
+    assert.equal(firstSlideState.rewriteExists, true);
+    assert.equal(firstSlideState.shortenExists, true);
+    assert.equal(firstSlideState.punchExists, true);
+    assert.equal(firstSlideState.suggestDisabled, true);
+
+    await page.click(".slide-card:nth-of-type(3)");
+    await page.waitForFunction(() => {
+      const button = document.querySelector('.slide-ai-btn[data-action="suggest-layout"]');
+      return button && !button.disabled;
+    });
+
+    await page.close();
+  });
+
   it("filters specs and auto-loads an existing preview", async () => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1600, height: 1200, deviceScaleFactor: 1 });

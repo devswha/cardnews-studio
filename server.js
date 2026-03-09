@@ -11,13 +11,226 @@ const express = require("express");
 const yaml = require("js-yaml");
 const { renderSpec, listSpecs, listThemes, listOutputSlides } = require("./src/render-api");
 const SpecValidation = require("./public/spec-validation.js");
+const { getBlockSchemas } = require("./src/block-schemas");
+const { TEMPLATE_PRESETS } = require("./src/template-presets");
+const {
+  generateSpec,
+  generateSlideVariant,
+  isAvailable: isAiAvailable,
+  MAX_INPUT_LENGTH: MAX_GENERATE_TEXT_LENGTH,
+} = require("./src/ai-generator");
+const { fetchArticle } = require("./src/url-fetcher");
+
+const SPECS_DIR = path.resolve(__dirname, "specs");
+const OUTPUT_DIR = path.resolve(__dirname, "output");
+const SPEC_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const BLOCK_SCHEMAS = getBlockSchemas();
+const API_TEMPLATE_PRESETS = buildTemplatePayloads();
+const AI_TONE_OPTIONS = ["professional", "playful", "bold", "technical"];
+const AI_DENSITY_OPTIONS = ["compact", "balanced", "detailed"];
+const AI_INTENT_OPTIONS = ["awareness", "explain", "compare", "action"];
+const AI_SLIDE_COUNT_OPTIONS = [3, 5, 7];
+const AI_SLIDE_ACTIONS = ["rewrite", "shorten", "punch-up", "suggest-layout"];
 
 function normalizeSpecSlug(rawSlug) {
-  const safeSlug = path.basename(rawSlug || "");
-  if (!rawSlug || safeSlug !== rawSlug) {
+  if (typeof rawSlug !== "string" || !SPEC_SLUG_PATTERN.test(rawSlug)) {
     throw new Error("Invalid spec name");
   }
-  return safeSlug;
+  return rawSlug;
+}
+
+function createDefaultSpec() {
+  return {
+    meta: {
+      title: "New Card News",
+      subtitle: "Subtitle",
+      total_slides: 2,
+    },
+    slides: [
+      {
+        slide: 1,
+        layout: "cover",
+        title: "New Card News",
+        subtitle: "Subtitle",
+        blocks: [],
+      },
+      {
+        slide: 2,
+        layout: "closing",
+        title: "Summary",
+        blocks: [],
+      },
+    ],
+  };
+}
+
+function toYamlContent(specObject) {
+  return yaml.dump(specObject, {
+    lineWidth: -1,
+    noRefs: true,
+    quotingType: '"',
+    forceQuotes: false,
+  });
+}
+
+function cloneValue(value) {
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeOptionalTheme(rawTheme) {
+  if (rawTheme == null) {
+    return null;
+  }
+
+  if (typeof rawTheme !== "string") {
+    throw new Error("Theme must be a string.");
+  }
+
+  const safeTheme = rawTheme.trim();
+  if (!safeTheme) {
+    return null;
+  }
+
+  if (!listThemes().includes(safeTheme)) {
+    throw new Error(`Unknown theme: ${safeTheme}`);
+  }
+
+  return safeTheme;
+}
+
+function normalizeGenerateOptions(rawOptions) {
+  const source = rawOptions && typeof rawOptions === "object" && !Array.isArray(rawOptions)
+    ? rawOptions
+    : {};
+  const result = {};
+
+  if (source.tone != null) {
+    const tone = String(source.tone).trim().toLowerCase();
+    if (!AI_TONE_OPTIONS.includes(tone)) {
+      throw new Error(`Unknown generation tone: ${source.tone}`);
+    }
+    result.tone = tone;
+  }
+
+  if (source.density != null) {
+    const density = String(source.density).trim().toLowerCase();
+    if (!AI_DENSITY_OPTIONS.includes(density)) {
+      throw new Error(`Unknown generation density: ${source.density}`);
+    }
+    result.density = density;
+  }
+
+  if (source.intent != null) {
+    const intent = String(source.intent).trim().toLowerCase();
+    if (!AI_INTENT_OPTIONS.includes(intent)) {
+      throw new Error(`Unknown generation intent: ${source.intent}`);
+    }
+    result.intent = intent;
+  }
+
+  if (source.slideCount != null) {
+    const slideCount = Number(source.slideCount);
+    if (!AI_SLIDE_COUNT_OPTIONS.includes(slideCount)) {
+      throw new Error(`Unsupported slide count: ${source.slideCount}`);
+    }
+    result.slideCount = slideCount;
+  }
+
+  return result;
+}
+
+function normalizeSlideAction(rawAction) {
+  const action = String(rawAction || "").trim().toLowerCase();
+  if (!AI_SLIDE_ACTIONS.includes(action)) {
+    throw new Error(`Unsupported slide action: ${rawAction}`);
+  }
+  return action;
+}
+
+function buildTemplatePayloads() {
+  return TEMPLATE_PRESETS.map((template) => {
+    const spec = cloneValue(template.spec || {});
+    const validation = SpecValidation.validateSpec(spec, BLOCK_SCHEMAS);
+    if (!validation.valid) {
+      throw new Error(
+        `Invalid template preset "${template.id || template.label || "unknown"}": ${SpecValidation.summarize(validation)}`
+      );
+    }
+
+    return {
+      id: template.id,
+      label: template.label,
+      name: template.label,
+      description: template.description,
+      slideCount: template.slideCount || (Array.isArray(spec.slides) ? spec.slides.length : 0),
+      layouts: Array.isArray(spec.slides) ? spec.slides.map((slide) => slide.layout) : [],
+      spec,
+    };
+  });
+}
+
+function statusForAiError(error) {
+  switch (error && error.code) {
+    case "ERR_AI_INPUT_REQUIRED":
+    case "ERR_AI_INPUT_TOO_LONG":
+    case "ERR_AI_UNSUPPORTED_BACKEND":
+    case "ERR_AI_SPEC_REQUIRED":
+    case "ERR_AI_ACTION_INVALID":
+    case "ERR_AI_SLIDE_INDEX":
+      return 400;
+    case "ERR_AI_UNAVAILABLE":
+      return 503;
+    case "ERR_AI_TIMEOUT":
+      return 504;
+    case "ERR_AI_PROCESS_EXIT":
+    case "ERR_AI_PROCESS_START":
+    case "ERR_AI_OUTPUT":
+    case "ERR_AI_OUTPUT_EMPTY":
+    case "ERR_AI_VALIDATION":
+      return 502;
+    default:
+      return 500;
+  }
+}
+
+function statusForUrlError(error) {
+  switch (error && error.code) {
+    case "ERR_URL_REQUIRED":
+    case "ERR_URL_INVALID":
+    case "ERR_URL_PROTOCOL":
+    case "INVALID_URL":
+      return 400;
+    case "ERR_URL_PRIVATE_IP":
+    case "FORBIDDEN_URL":
+      return 403;
+    case "ERR_FETCH_TIMEOUT":
+    case "ERR_FETCH_FAILED":
+    case "ERR_FETCH_REDIRECTS":
+    case "ERR_URL_RESOLVE":
+    case "TIMEOUT":
+    case "FETCH_FAILED":
+    case "BAD_RESPONSE":
+    case "TOO_MANY_REDIRECTS":
+    case "DNS_LOOKUP_FAILED":
+      return 502;
+    default:
+      return 500;
+  }
+}
+
+function toErrorPayload(error) {
+  const payload = {
+    error: error && error.message ? error.message : "Unexpected error.",
+  };
+
+  if (error && Array.isArray(error.validation) && error.validation.length) {
+    payload.validation = error.validation;
+  }
+
+  return payload;
 }
 
 function createApp() {
@@ -25,7 +238,8 @@ function createApp() {
   let renderLock = Promise.resolve();
 
   app.disable("x-powered-by");
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
+  app.use("/vendor/sortablejs", express.static(path.join(__dirname, "node_modules", "sortablejs")));
   app.use(express.static(path.join(__dirname, "public")));
 
   // Serve rendered PNGs with no-cache
@@ -58,6 +272,175 @@ function createApp() {
     }
   });
 
+  app.get("/api/ai-status", async (req, res) => {
+    try {
+      res.json({
+        available: await isAiAvailable(),
+      });
+    } catch {
+      res.json({ available: false });
+    }
+  });
+
+  app.get("/api/templates", (req, res) => {
+    try {
+      res.json(cloneValue(API_TEMPLATE_PRESETS));
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/generate", async (req, res) => {
+    const body =
+      req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+        ? req.body
+        : {};
+    if (typeof body.text !== "string" || !body.text.trim()) {
+      return res.status(400).json({ error: "Text is required." });
+    }
+
+    if (body.text.length > MAX_GENERATE_TEXT_LENGTH) {
+      return res.status(400).json({
+        error: `Text must be ${MAX_GENERATE_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.`,
+      });
+    }
+
+    let theme;
+    let generationOptions;
+    try {
+      theme = normalizeOptionalTheme(body.theme);
+      generationOptions = normalizeGenerateOptions(body.generationOptions);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    try {
+      const spec = await generateSpec(body.text, {
+        blockSchemas: BLOCK_SCHEMAS,
+        theme,
+        generationOptions,
+      });
+      res.json({ spec });
+    } catch (err) {
+      res.status(statusForAiError(err)).json(toErrorPayload(err));
+    }
+  });
+
+  app.post("/api/generate-slide-variant", async (req, res) => {
+    const body =
+      req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+        ? req.body
+        : {};
+
+    if (!body.spec || typeof body.spec !== "object" || Array.isArray(body.spec)) {
+      return res.status(400).json({ error: "Spec is required." });
+    }
+
+    const slideIndex = Number(body.slideIndex);
+    if (!Number.isInteger(slideIndex)) {
+      return res.status(400).json({ error: "slideIndex must be an integer." });
+    }
+
+    let action;
+    let generationOptions;
+    try {
+      action = normalizeSlideAction(body.action);
+      generationOptions = normalizeGenerateOptions(body.generationOptions);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    const validation = SpecValidation.validateSpec(body.spec, BLOCK_SCHEMAS);
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: SpecValidation.summarize(validation),
+        validation: validation.errors,
+      });
+    }
+
+    if (slideIndex < 0 || slideIndex >= body.spec.slides.length) {
+      return res.status(400).json({ error: "slideIndex is out of range." });
+    }
+
+    try {
+      const slide = await generateSlideVariant(body.spec, {
+        slideIndex,
+        action,
+        blockSchemas: BLOCK_SCHEMAS,
+        generationOptions,
+      });
+      res.json({ slide });
+    } catch (err) {
+      res.status(statusForAiError(err)).json(toErrorPayload(err));
+    }
+  });
+
+  app.post("/api/fetch-url", async (req, res) => {
+    const body =
+      req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+        ? req.body
+        : {};
+    if (typeof body.url !== "string" || !body.url.trim()) {
+      return res.status(400).json({ error: "URL is required." });
+    }
+
+    try {
+      res.json(await fetchArticle(body.url));
+    } catch (err) {
+      res.status(statusForUrlError(err)).json(toErrorPayload(err));
+    }
+  });
+
+  // API: Create spec
+  app.post("/api/specs", (req, res) => {
+    const payload =
+      req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+        ? req.body
+        : {};
+
+    let safeSlug;
+    try {
+      safeSlug = normalizeSpecSlug(payload.slug);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (
+      payload.spec !== undefined &&
+      (!payload.spec || typeof payload.spec !== "object" || Array.isArray(payload.spec))
+    ) {
+      return res.status(400).json({ error: "Invalid spec payload" });
+    }
+
+    const yamlPath = path.resolve(SPECS_DIR, safeSlug + ".yaml");
+    if (fs.existsSync(yamlPath)) {
+      return res.status(409).json({ error: "Spec already exists" });
+    }
+
+    try {
+      const specObject = payload.spec || createDefaultSpec();
+      const validation = SpecValidation.validateSpec(specObject, BLOCK_SCHEMAS);
+
+      if (!validation.valid) {
+        return res.status(400).json({
+          error: SpecValidation.summarize(validation),
+          validation: validation.errors,
+        });
+      }
+
+      fs.writeFileSync(yamlPath, toYamlContent(specObject), {
+        encoding: "utf8",
+        flag: "wx",
+      });
+      res.status(201).json({ ok: true, slug: safeSlug });
+    } catch (err) {
+      if (err && err.code === "EEXIST") {
+        return res.status(409).json({ error: "Spec already exists" });
+      }
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // API: Read spec YAML content
   app.get("/api/specs/:slug", (req, res) => {
     let safeSlug;
@@ -67,7 +450,7 @@ function createApp() {
       return res.status(400).json({ error: err.message });
     }
 
-    const yamlPath = path.resolve(__dirname, "specs", safeSlug + ".yaml");
+    const yamlPath = path.resolve(SPECS_DIR, safeSlug + ".yaml");
     if (!fs.existsSync(yamlPath)) {
       return res.status(404).json({ error: "Spec not found" });
     }
@@ -88,7 +471,7 @@ function createApp() {
       return res.status(400).json({ error: err.message });
     }
 
-    const yamlPath = path.resolve(__dirname, "specs", safeSlug + ".yaml");
+    const yamlPath = path.resolve(SPECS_DIR, safeSlug + ".yaml");
     if (!fs.existsSync(yamlPath)) {
       return res.status(404).json({ error: "Spec not found" });
     }
@@ -128,7 +511,7 @@ function createApp() {
       return res.status(400).json({ error: err.message });
     }
 
-    const yamlPath = path.resolve(__dirname, "specs", safeSlug + ".yaml");
+    const yamlPath = path.resolve(SPECS_DIR, safeSlug + ".yaml");
     if (!fs.existsSync(yamlPath)) {
       return res.status(404).json({ error: "Spec not found" });
     }
@@ -138,19 +521,14 @@ function createApp() {
       if (typeof req.body === "object" && req.body !== null && !Buffer.isBuffer(req.body)) {
         // Parsed by express.json() — convert object to YAML
         specObject = req.body;
-        yamlContent = yaml.dump(req.body, {
-          lineWidth: -1,
-          noRefs: true,
-          quotingType: '"',
-          forceQuotes: false,
-        });
+        yamlContent = toYamlContent(req.body);
       } else {
         // Raw string (YAML body)
         yamlContent = typeof req.body === "string" ? req.body : req.body.toString("utf8");
         specObject = yaml.load(yamlContent);
       }
 
-      const validation = SpecValidation.validateSpec(specObject);
+      const validation = SpecValidation.validateSpec(specObject, BLOCK_SCHEMAS);
       if (!validation.valid) {
         return res.status(400).json({
           error: SpecValidation.summarize(validation),
@@ -162,6 +540,32 @@ function createApp() {
       res.json({ ok: true });
     } catch (err) {
       res.status(400).json({ error: err.message });
+    }
+  });
+
+  // API: Delete spec and rendered output
+  app.delete("/api/specs/:slug", (req, res) => {
+    let safeSlug;
+    try {
+      safeSlug = normalizeSpecSlug(req.params.slug);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    const yamlPath = path.resolve(SPECS_DIR, safeSlug + ".yaml");
+    if (!fs.existsSync(yamlPath)) {
+      return res.status(404).json({ error: "Spec not found" });
+    }
+
+    try {
+      fs.unlinkSync(yamlPath);
+      fs.rmSync(path.resolve(OUTPUT_DIR, safeSlug), {
+        recursive: true,
+        force: true,
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -180,7 +584,7 @@ function createApp() {
       return res.status(400).json({ error: err.message });
     }
 
-    const yamlPath = path.resolve(__dirname, "specs", safeSpec + ".yaml");
+    const yamlPath = path.resolve(SPECS_DIR, safeSpec + ".yaml");
     if (!fs.existsSync(yamlPath)) {
       return res.status(404).json({ error: `Spec not found: ${safeSpec}` });
     }
@@ -221,7 +625,7 @@ function createApp() {
       return res.status(400).json({ error: err.message });
     }
 
-    const yamlPath = path.resolve(__dirname, "specs", safeSpec + ".yaml");
+    const yamlPath = path.resolve(SPECS_DIR, safeSpec + ".yaml");
 
     if (!fs.existsSync(yamlPath)) {
       return res.status(404).json({ error: `Spec not found: ${safeSpec}` });

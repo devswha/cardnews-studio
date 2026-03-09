@@ -24,6 +24,7 @@
       </div>
       <div class="spec-list" id="specList"></div>
       <div class="sidebar-footer">
+        <button class="editor-btn save" id="newSpecBtn" type="button" style="width: 100%; margin-bottom: 8px;">+ New</button>
         <select class="theme-select" id="themeSelect">
           <option value="">dark (default)</option>
         </select>
@@ -35,6 +36,7 @@
         <span class="editor-filename" id="editorFilename">spec.yaml</span>
         <div class="editor-actions">
           <span class="editor-status" id="editorStatus">Ready</span>
+          <button class="editor-btn" id="deleteSpecBtn" type="button" disabled>Delete</button>
           <button class="editor-btn save" id="saveBtn">Save</button>
           <button class="editor-btn save" id="saveRenderBtn">Save &amp; Render All</button>
         </div>
@@ -68,13 +70,16 @@
       </div>
     </div>
   </div>
+  <div id="creationFlowRoot"></div>
   <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
   <script src="app-helpers.js"></script>
   <script src="block-schemas.js"></script>
   <script src="schema-defaults.js"></script>
   <script src="spec-validation.js"></script>
   <script src="form-state.js"></script>
+  <script src="/vendor/sortablejs/Sortable.min.js"></script>
   <script src="form-ui.js"></script>
+  <script src="creation-flow.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

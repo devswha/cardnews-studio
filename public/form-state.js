@@ -80,6 +80,33 @@ const FormState = (function () {
       });
   };
 
+  State.prototype.createSpec = function (slug, initialSpec) {
+    const self = this;
+    const payload = { slug: slug };
+    if (initialSpec !== undefined) {
+      payload.spec = initialSpec;
+    }
+
+    return fetch("/api/specs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            throw new Error(data.error || ("Failed to create spec: " + res.status));
+          });
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        return self.loadSpec(data.slug || slug).then(function () {
+          return data;
+        });
+      });
+  };
+
   State.prototype.saveSpec = function () {
     const self = this;
     return fetch("/api/specs/" + this.slug, {
@@ -98,6 +125,38 @@ const FormState = (function () {
       .then(function () {
         self.markClean();
         self._emit();
+      });
+  };
+
+  State.prototype.deleteSpec = function (slug) {
+    const self = this;
+    const targetSlug = slug || this.slug;
+
+    if (!targetSlug) {
+      return Promise.reject(new Error("No spec selected"));
+    }
+
+    return fetch("/api/specs/" + targetSlug, {
+      method: "DELETE",
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            throw new Error(data.error || ("Failed to delete spec: " + res.status));
+          });
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        if (self.slug === targetSlug) {
+          self.slug = null;
+          self.meta = {};
+          self.slides = [];
+          self.dirty = false;
+          self.selectedSlideIndex = 0;
+        }
+        self._emit();
+        return data;
       });
   };
 
@@ -188,6 +247,21 @@ const FormState = (function () {
   State.prototype.updateSlideField = function (index, field, value) {
     if (!this.slides[index]) return;
     this.slides[index][field] = value;
+    this._markDirty();
+    this._emit();
+  };
+
+  State.prototype.replaceSlide = function (index, nextSlide) {
+    if (!this.slides[index] || !nextSlide || typeof nextSlide !== "object") {
+      return;
+    }
+
+    const current = this.slides[index];
+    this.slides[index] = {
+      ...nextSlide,
+      slide: current.slide || index + 1,
+      blocks: Array.isArray(nextSlide.blocks) ? nextSlide.blocks : [],
+    };
     this._markDirty();
     this._emit();
   };

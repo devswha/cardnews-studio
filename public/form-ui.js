@@ -4,6 +4,121 @@
 var FormUI = (function () {
   "use strict";
 
+  function destroySortableInstance(container, key) {
+    if (!container || !container[key] || typeof container[key].destroy !== "function") {
+      return;
+    }
+    container[key].destroy();
+    container[key] = null;
+  }
+
+  function stopClickPropagation(event) {
+    event.stopPropagation();
+  }
+
+  function createDragHandle(className, label) {
+    var handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = className;
+    handle.title = label;
+    handle.setAttribute("aria-label", label);
+    handle.textContent = "\u22ee\u22ee";
+    handle.addEventListener("click", stopClickPropagation);
+    return handle;
+  }
+
+  function createSlideAiActionButton(action, label, callbacks, context) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "slide-ai-btn";
+    button.dataset.action = action;
+    button.textContent = label;
+
+    var isBusy = callbacks && typeof callbacks.isSlideAiBusy === "function"
+      ? Boolean(callbacks.isSlideAiBusy())
+      : false;
+    var isActive = callbacks && typeof callbacks.isSlideAiActionRunning === "function"
+      ? Boolean(callbacks.isSlideAiActionRunning(action))
+      : false;
+    var isDisabled = callbacks && typeof callbacks.isSlideAiActionDisabled === "function"
+      ? Boolean(callbacks.isSlideAiActionDisabled(context.index, context.slide, action))
+      : false;
+
+    if (isActive) {
+      button.textContent = "Working…";
+    }
+    button.disabled = isBusy || isDisabled;
+    button.title = isDisabled && action === "suggest-layout"
+      ? "Layout suggestions are available for middle slides only."
+      : label;
+    button.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!callbacks || typeof callbacks.onAiSlideAction !== "function" || button.disabled) {
+        return;
+      }
+      callbacks.onAiSlideAction(context.index, context.slide.slide || (context.index + 1), action);
+    });
+    return button;
+  }
+
+  function createSlideSortable(listEl, state, callbacks) {
+    if (!listEl || typeof Sortable === "undefined" || !state || state.getSlides().length < 2) {
+      return null;
+    }
+
+    return Sortable.create(listEl, {
+      draggable: ".slide-card",
+      handle: ".slide-card-drag-handle",
+      animation: 160,
+      ghostClass: "sortable-ghost",
+      chosenClass: "sortable-chosen",
+      dragClass: "sortable-drag",
+      onEnd: function (evt) {
+        if (
+          !evt ||
+          typeof evt.oldIndex !== "number" ||
+          typeof evt.newIndex !== "number" ||
+          evt.oldIndex === evt.newIndex
+        ) {
+          return;
+        }
+
+        state.moveSlide(evt.oldIndex, evt.newIndex);
+        if (callbacks && typeof callbacks.onSelectSlide === "function") {
+          callbacks.onSelectSlide(evt.newIndex, evt.newIndex + 1);
+        }
+      },
+    });
+  }
+
+  function createBlockSortable(listEl, state, slideIndex) {
+    if (!listEl || typeof Sortable === "undefined" || !state || state.getBlocks(slideIndex).length < 2) {
+      return null;
+    }
+
+    return Sortable.create(listEl, {
+      draggable: ".block-item",
+      handle: ".block-drag-handle",
+      animation: 160,
+      ghostClass: "sortable-ghost",
+      chosenClass: "sortable-chosen",
+      dragClass: "sortable-drag",
+      onEnd: function (evt) {
+        if (
+          !evt ||
+          typeof evt.oldIndex !== "number" ||
+          typeof evt.newIndex !== "number" ||
+          evt.oldIndex === evt.newIndex
+        ) {
+          return;
+        }
+
+        state.moveBlock(slideIndex, evt.oldIndex, evt.newIndex);
+      },
+    });
+  }
+
   function escapeHtml(str) {
     var div = document.createElement("div");
     div.textContent = str;
@@ -361,12 +476,19 @@ var FormUI = (function () {
   // ── Slide List ──────────────────────────────────────────────────────────────
 
   function renderSlideList(container, state, callbacks) {
+    destroySortableInstance(container, "__slideSortable");
     container.innerHTML = "";
     var slides = state.getSlides();
+    var slideCards = document.createElement("div");
+    slideCards.className = "slide-card-list";
 
     slides.forEach(function (slide, idx) {
       var card = document.createElement("div");
       card.className = "slide-card" + (idx === state.selectedSlideIndex ? " active" : "");
+      card.dataset.slideIndex = String(idx);
+
+      var dragHandle = createDragHandle("slide-card-drag-handle", "Drag to reorder slide");
+      card.appendChild(dragHandle);
 
       var num = document.createElement("span");
       num.className = "slide-card-num";
@@ -441,8 +563,10 @@ var FormUI = (function () {
         }
       });
 
-      container.appendChild(card);
+      slideCards.appendChild(card);
     });
+
+    container.appendChild(slideCards);
 
     // Add Slide button
     var addArea = document.createElement("div");
@@ -465,11 +589,14 @@ var FormUI = (function () {
     });
     addArea.appendChild(addBtn);
     container.appendChild(addArea);
+
+    container.__slideSortable = createSlideSortable(slideCards, state, callbacks);
   }
 
   // ── Active Slide Form ───────────────────────────────────────────────────────
 
   function renderSlideForm(container, state, callbacks) {
+    destroySortableInstance(container, "__blockSortable");
     container.innerHTML = "";
     var idx = state.selectedSlideIndex;
     var slide = state.getSlide(idx);
@@ -483,6 +610,21 @@ var FormUI = (function () {
     var h3 = document.createElement("h3");
     h3.textContent = "Slide " + (slide.slide || idx + 1);
     header.appendChild(h3);
+
+    var headerActions = document.createElement("div");
+    headerActions.className = "slide-form-actions";
+    [
+      { action: "rewrite", label: "Rewrite" },
+      { action: "shorten", label: "Shorten" },
+      { action: "punch-up", label: "Punch Up" },
+      { action: "suggest-layout", label: "Suggest Layout" },
+    ].forEach(function (entry) {
+      headerActions.appendChild(createSlideAiActionButton(entry.action, entry.label, callbacks, {
+        index: idx,
+        slide: slide,
+      }));
+    });
+    header.appendChild(headerActions);
     form.appendChild(header);
 
     var body = document.createElement("div");
@@ -534,16 +676,22 @@ var FormUI = (function () {
     blocksSection.appendChild(blocksLabel);
 
     var blocks = slide.blocks || [];
+    var blockList = document.createElement("div");
+    blockList.className = "block-list";
     blocks.forEach(function (block, bIdx) {
       var blockType = block.type || "unknown";
       var schema = BLOCK_SCHEMAS[blockType];
 
       var blockItem = document.createElement("div");
       blockItem.className = "block-item";
+      blockItem.dataset.blockIndex = String(bIdx);
 
       // Block header
       var blockHeader = document.createElement("div");
       blockHeader.className = "block-header";
+
+      var dragHandle = createDragHandle("block-drag-handle", "Drag to reorder block");
+      blockHeader.appendChild(dragHandle);
 
       var badge = document.createElement("span");
       badge.className = "block-type-badge";
@@ -623,8 +771,9 @@ var FormUI = (function () {
       });
 
       blockItem.appendChild(blockBody);
-      blocksSection.appendChild(blockItem);
+      blockList.appendChild(blockItem);
     });
+    blocksSection.appendChild(blockList);
 
     // Add block
     var addArea = document.createElement("div");
@@ -651,6 +800,7 @@ var FormUI = (function () {
     body.appendChild(blocksSection);
     form.appendChild(body);
     container.appendChild(form);
+    container.__blockSortable = createBlockSortable(blockList, state, idx);
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
