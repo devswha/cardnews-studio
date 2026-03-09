@@ -1,4 +1,0 @@
-interface:
-  display_name: "Web Editor Hardening"
-  short_description: "Add validation, toasts, and Puppeteer E2E."
-  default_prompt: "Harden the current web editor with validation, toast UX, and browser E2E coverage."

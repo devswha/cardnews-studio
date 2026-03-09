@@ -94,6 +94,10 @@ Output:
 output/topic-*/01.png ~ NN.png
 ```
 
+### Optional cover generation
+
+`src/generate-cover.js` can generate a cover illustration when you provide `GEMINI_API_KEY` in a local `.env` file. Keep that file out of git.
+
 ## Editor workflow
 
 1. 좌측에서 spec 선택
@@ -118,9 +122,7 @@ Coverage includes:
 
 ## Related docs
 
-- `CLAUDE.md` — 프로젝트 작업 가이드
 - `DESIGN.md` — 카드뉴스 시스템 설계 문서
-- `.claude/skills/` — 로컬 작업용 스킬
 
 ## Repository
 
