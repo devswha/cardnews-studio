@@ -1,10 +1,26 @@
 {
   "name": "cardnews-studio",
   "version": "0.1.0",
-  "private": true,
-  "description": "Card-news studio with YAML renderer and web editor",
+  "description": "YAML-based card news generator with a visual web editor",
   "main": "render.js",
+  "license": "MIT",
+  "author": "devswha",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devswha/cardnews-studio.git"
+  },
+  "keywords": [
+    "card-news",
+    "cardnews",
+    "instagram",
+    "social-media",
+    "yaml",
+    "png",
+    "generator",
+    "visual-editor"
+  ],
   "scripts": {
+    "start": "node server.js",
     "render": "node render.js",
     "test": "node --test 'test/*.test.js'"
   },

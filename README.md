@@ -1,129 +1,162 @@
 # cardnews-studio
 
-YAML 기반으로 카드뉴스를 만들고, 웹 에디터에서 바로 수정·렌더·프리뷰할 수 있는 **card news studio** 입니다.
+YAML 파일 하나로 인스타그램/SNS용 카드뉴스 이미지를 만들어주는 도구입니다.
+웹 에디터에서 내용을 수정하고, 버튼 하나로 PNG 이미지를 뽑아낼 수 있습니다.
 
 <p align="center">
   <img src="docs/media/editor-demo.gif" alt="cardnews-studio demo" width="900" />
 </p>
 
-## What it does
+## 이런 분들에게 유용합니다
 
-- **YAML → PNG 렌더링**
-  - `render.js`
-  - Handlebars 템플릿 + Puppeteer 스크린샷 기반
-- **웹 에디터**
-  - `server.js` + `public/`
-  - spec 검색, 메타/슬라이드/블록 편집, 저장, 전체 렌더, 슬라이드별 프리뷰
-- **레이아웃/블록 시스템**
-  - `templates/`, `styles/`, `src/blocks/`
-- **브라우저 테스트 포함**
-  - parser / blocks / utils / validation / server / browser E2E
+- SNS 카드뉴스를 자주 만드는 마케터, 콘텐츠 크리에이터
+- 디자인 툴 없이 빠르게 카드뉴스를 만들고 싶은 분
+- 반복되는 카드뉴스 제작을 자동화하고 싶은 팀
 
-## Screenshots
+## 어떻게 동작하나요?
 
-### Editor overview
+1. YAML 파일에 제목, 슬라이드 내용, 블록 등을 작성합니다
+2. 웹 에디터에서 실시간으로 수정하고 미리보기를 확인합니다
+3. **Render** 버튼을 누르면 슬라이드별 PNG 이미지가 생성됩니다
+
+별도의 디자인 작업 없이, 텍스트만 준비하면 됩니다.
+
+## 주요 기능
+
+### 웹 에디터
+
+브라우저에서 바로 사용할 수 있는 에디터입니다. 슬라이드를 추가/삭제하고, 블록을 끌어서 순서를 바꾸고, 저장하면 바로 PNG로 렌더링됩니다.
 
 <p>
   <img src="docs/media/editor-overview.png" alt="Editor overview" width="900" />
 </p>
 
-### Validation before save
+### 16가지 블록 타입
+
+카드 리스트, 코드 에디터, 터미널, 인용문, 표, 통계 숫자, 진행 바, 단계 리스트 등 다양한 블록을 조합해서 슬라이드를 구성할 수 있습니다.
+
+### 저장 전 자동 검증
+
+저장하기 전에 필수 항목 누락, 형식 오류 등을 자동으로 체크합니다. 문제가 있으면 어디를 고쳐야 하는지 알려줍니다.
 
 <p>
-  <img src="docs/media/editor-validation.png" alt="Validation panel and toast" width="900" />
+  <img src="docs/media/editor-validation.png" alt="Validation panel" width="900" />
 </p>
 
-### Slide-to-preview sync
+### 슬라이드-프리뷰 동기화
+
+왼쪽에서 슬라이드 카드를 클릭하면, 오른쪽 미리보기가 해당 슬라이드로 자동 이동합니다.
 
 <p>
-  <img src="docs/media/editor-slide-sync.png" alt="Slide card selection syncs preview" width="900" />
+  <img src="docs/media/editor-slide-sync.png" alt="Slide-to-preview sync" width="900" />
 </p>
 
-## Project structure
+### 테마
 
-```text
-cardnews-studio/
-├── render.js
-├── server.js
-├── public/
-├── specs/
-├── src/
-├── styles/
-├── templates/
-├── assets/
-└── test/
-```
+기본 테마 외에 8bit, warm 등 테마를 적용할 수 있으며, 직접 테마를 추가할 수도 있습니다.
 
-## Quick start
+### AI 커버 일러스트 (선택)
 
-### Install
+Gemini API 키가 있으면 커버 슬라이드용 일러스트를 AI로 자동 생성할 수 있습니다.
+
+## 시작하기
+
+### 1. 설치
 
 ```bash
+git clone https://github.com/devswha/cardnews-studio.git
+cd cardnews-studio
 npm install
 ```
 
-### Run the web editor
+### 2. 웹 에디터 실행
 
 ```bash
-node server.js
+npm start
 ```
 
-Default URL:
+브라우저에서 `http://localhost:3456` 을 열면 에디터가 나타납니다.
+
+포트를 바꾸고 싶다면:
+
+```bash
+PORT=4567 npm start
+```
+
+### 3. CLI로 렌더링 (선택)
+
+웹 에디터 없이 터미널에서 직접 렌더링할 수도 있습니다.
+
+```bash
+node render.js my-spec.yaml              # 전체 슬라이드
+node render.js my-spec.yaml --slide 3    # 3번 슬라이드만
+node render.js my-spec.yaml --theme warm # 테마 적용
+```
+
+결과물은 `output/` 폴더에 PNG 파일로 저장됩니다.
+
+### 4. AI 커버 일러스트 설정 (선택)
+
+`.env` 파일을 만들고 Gemini API 키를 넣으면 커버 일러스트를 자동 생성할 수 있습니다.
+
+```bash
+cp .env.example .env
+# .env 파일을 열고 GEMINI_API_KEY를 입력하세요
+```
+
+## YAML 스펙 예시
+
+```yaml
+meta:
+  title: 나만의 카드뉴스 제목
+  subtitle: 부제목을 여기에
+  author: 홍길동
+  total_slides: 3
+
+slides:
+  - slide: 1
+    layout: cover
+    title: 첫 번째 슬라이드
+    subtitle: 표지입니다
+
+  - slide: 2
+    layout: content
+    title: 핵심 내용
+    blocks:
+      - type: card-list
+        items:
+          - emoji: "1"
+            title: 첫 번째 포인트
+            description: 설명을 여기에 작성합니다
+          - emoji: "2"
+            title: 두 번째 포인트
+            description: 설명을 여기에 작성합니다
+
+  - slide: 3
+    layout: closing
+    title: 감사합니다
+    blocks: []
+```
+
+## 프로젝트 구조
 
 ```text
-http://localhost:3456
+cardnews-studio/
+├── render.js          # CLI 렌더러
+├── server.js          # 웹 에디터 서버
+├── public/            # 에디터 프론트엔드
+├── src/               # 핵심 로직 (파서, 렌더러, 블록)
+├── styles/            # CSS 테마
+├── templates/         # Handlebars 템플릿
+└── test/              # 테스트
 ```
 
-Use a custom port if needed:
-
-```bash
-PORT=4567 node server.js
-```
-
-### Render from CLI
-
-```bash
-node render.js specs/topic-oh-my-codex.yaml
-node render.js specs/topic-oh-my-codex.yaml --slide 3
-node render.js specs/topic-oh-my-codex.yaml --theme warm
-```
-
-Output:
-
-```text
-output/topic-*/01.png ~ NN.png
-```
-
-### Optional cover generation
-
-`src/generate-cover.js` can generate a cover illustration when you provide `GEMINI_API_KEY` in a local `.env` file. Keep that file out of git.
-
-## Editor workflow
-
-1. 좌측에서 spec 선택
-2. 중앙에서 메타/슬라이드/블록 수정
-3. 저장 또는 **Save & Render All**
-4. 우측 프리뷰에서 렌더 결과 확인
-5. 슬라이드 카드 클릭 시 우측 프리뷰도 같은 슬라이드로 동기화
-
-## Test
+## 테스트
 
 ```bash
 npm test
 ```
 
-Coverage includes:
+## License
 
-- block renderer tests
-- YAML parser tests
-- helper / validation tests
-- Express API tests
-- Puppeteer-based editor E2E tests
-
-## Related docs
-
-- `DESIGN.md` — 카드뉴스 시스템 설계 문서
-
-## Repository
-
-- GitHub: https://github.com/devswha/cardnews-studio
+[MIT](LICENSE)

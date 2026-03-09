@@ -1,11 +1,19 @@
 node_modules/
 output/
+.env
+
+# internal docs & assets (not for public distribution)
+specs/
+assets/illustrations/
+DESIGN.md
+PLAN.md
+samples/
+docs/reviews/
+
+# editor / tool config
 .omc/
 .omx/
-samples/
-image.png
-image_1.png
 .claude/
 CLAUDE.md
-PLAN.md
-docs/reviews/
+image.png
+image_1.png
