@@ -50,6 +50,7 @@
   var lastSelectedSlideIndex = 0;
   var selectedTheme = "";
   var pendingSlideAiAction = "";
+  var slideVariantReview = null;
   var creationResources = {
     aiStatus: { available: false, checked: false, reason: "" },
     templates: [],
@@ -332,6 +333,14 @@
     restoreFocusState(focusState);
   }
 
+  function getSlideSignature(slide) {
+    try {
+      return JSON.stringify(slide || null);
+    } catch {
+      return "";
+    }
+  }
+
   function refreshUiState() {
     var isBusy =
       busy.saving ||
@@ -440,6 +449,7 @@
 
   function clearActiveSpecUi(message) {
     activeSpec = null;
+    slideVariantReview = null;
     lastSelectedSlideIndex = 0;
     editorFilename.textContent = "spec.yaml";
     editorPanel.classList.add("hidden");
@@ -466,6 +476,9 @@
     syncActiveSpecFromState();
     selectedTheme = Helpers.resolveThemeSelection(activeSpec, availableThemes);
     syncThemeSelect();
+    if (slideVariantReview && slideVariantReview.slideIndex !== state.selectedSlideIndex) {
+      slideVariantReview = null;
+    }
   }
 
   // ── Spec List ───────────────────────────────────────────────────────────────
@@ -593,6 +606,7 @@
     }
 
     activeSpec = findSpec(slug);
+    slideVariantReview = null;
     renderSpecList();
 
     editorFilename.textContent = slug + ".yaml";
@@ -718,6 +732,41 @@
       });
   }
 
+  function requestSlideVariants(request) {
+    var payload = request && typeof request === "object"
+      ? Object.assign({}, request)
+      : {};
+
+    if (!payload.spec || typeof payload.spec !== "object" || Array.isArray(payload.spec)) {
+      return Promise.reject(new Error("A valid spec is required."));
+    }
+
+    if (!Number.isInteger(payload.slideIndex)) {
+      return Promise.reject(new Error("A valid slide index is required."));
+    }
+
+    if (!payload.action) {
+      return Promise.reject(new Error("A slide action is required."));
+    }
+
+    if (!Number.isInteger(payload.count)) {
+      payload.count = 3;
+    }
+
+    return fetch("/api/generate-slide-variants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(parseJsonResponse)
+      .then(function (data) {
+        var variants = data && Array.isArray(data.variants)
+          ? data.variants
+          : (Array.isArray(data) ? data : []);
+        return { variants: variants };
+      });
+  }
+
   function requestFetchedArticle(request) {
     var payload = request && typeof request === "object"
       ? Object.assign({}, request)
@@ -799,6 +848,7 @@
 
   function createSpecFromFlow(request) {
     var payload = normalizeCreateRequest(request);
+    slideVariantReview = null;
 
     return withBusyFlag("creatingSpec", function () {
       return state.createSpec(payload.slug, payload.spec)
@@ -976,10 +1026,34 @@
       void slide;
       return action === "suggest-layout" && (idx <= 0 || idx >= state.getSlides().length - 1);
     },
+    getSlideVariantReview: function (idx) {
+      return slideVariantReview && slideVariantReview.slideIndex === idx ? slideVariantReview : null;
+    },
+    onApplySlideVariant: function (idx, variantIndex) {
+      applySlideVariant(idx, variantIndex);
+    },
+    onDismissSlideVariants: function (idx) {
+      dismissSlideVariantReview(idx);
+    },
+    onRegenerateSlideVariants: function (idx) {
+      if (slideVariantReview && slideVariantReview.slideIndex === idx && slideVariantReview.action) {
+        generateSlideVariantForActiveSlide(slideVariantReview.action);
+      }
+    },
   };
 
   state.onChange(function () {
     var focusState = captureFocusState();
+
+    if (slideVariantReview) {
+      var reviewedSlide = state.getSlide(slideVariantReview.slideIndex);
+      if (
+        slideVariantReview.slideIndex !== state.selectedSlideIndex ||
+        slideVariantReview.sourceSignature !== getSlideSignature(reviewedSlide)
+      ) {
+        slideVariantReview = null;
+      }
+    }
 
     if (!state.slug) {
       activeSpec = null;
@@ -1072,6 +1146,37 @@
     }[action] || "Generate";
   }
 
+  function dismissSlideVariantReview(slideIndex) {
+    if (!slideVariantReview) {
+      return;
+    }
+    if (slideIndex != null && slideVariantReview.slideIndex !== slideIndex) {
+      return;
+    }
+    slideVariantReview = null;
+    rerenderSlideFormPreservingFocus();
+  }
+
+  function applySlideVariant(slideIndex, variantIndex) {
+    if (
+      !slideVariantReview ||
+      slideVariantReview.slideIndex !== slideIndex ||
+      !Array.isArray(slideVariantReview.variants)
+    ) {
+      return;
+    }
+
+    var variant = slideVariantReview.variants[variantIndex];
+    if (!variant || typeof variant !== "object") {
+      return;
+    }
+
+    state.replaceSlide(slideIndex, variant);
+    slideVariantReview = null;
+    setPreviewStatus("Applied AI variant to slide " + (slideIndex + 1) + ".", "success");
+    showToast("Applied AI variant to slide " + (slideIndex + 1) + ".", "success", "AI update");
+  }
+
   function generateSlideVariantForActiveSlide(action) {
     var slideIndex = state.selectedSlideIndex;
     var currentSlide = state.getSlide(slideIndex);
@@ -1087,30 +1192,42 @@
     }
 
     pendingSlideAiAction = action;
+    slideVariantReview = null;
     refreshUiState();
     rerenderSlideFormPreservingFocus();
 
     withBusyFlag("generatingSlide", function () {
-      return requestSlideVariant({
+      return requestSlideVariants({
         spec: state.toJSON(),
         slideIndex: slideIndex,
         action: action,
+        count: 3,
       })
         .then(function (data) {
-          var nextSlide = data && data.slide ? data.slide : data;
-          if (!nextSlide || typeof nextSlide !== "object") {
-            throw new Error("Slide generation returned an invalid response.");
+          var variants = data && Array.isArray(data.variants) ? data.variants : [];
+          if (!variants.length) {
+            throw new Error("Slide generation returned no variants.");
           }
 
-          state.replaceSlide(slideIndex, nextSlide);
-          setPreviewStatus(humanizeSlideAction(action) + " updated slide " + (slideIndex + 1) + ".", "success");
-          showToast(
-            humanizeSlideAction(action) + " applied to slide " + (slideIndex + 1) + ". Render to preview changes.",
-            "success",
-            "AI update"
+          slideVariantReview = {
+            slideIndex: slideIndex,
+            action: action,
+            variants: variants,
+            sourceSignature: getSlideSignature(currentSlide),
+          };
+          setPreviewStatus(
+            humanizeSlideAction(action) + " created " + variants.length + " variant" + (variants.length > 1 ? "s" : "") + " for slide " + (slideIndex + 1) + ".",
+            "success"
           );
+          showToast(
+            "Review the AI variants below and apply the one you want.",
+            "success",
+            "AI variants ready"
+          );
+          rerenderSlideFormPreservingFocus();
         })
         .catch(function (err) {
+          slideVariantReview = null;
           setPreviewStatus("Slide AI failed: " + err.message, "error");
           showToast("Slide AI failed: " + err.message, "error", "AI update failed");
           throw createHandledError(err.message);

@@ -62,6 +62,119 @@ var FormUI = (function () {
     return button;
   }
 
+  function summarizeVariant(variant) {
+    if (!variant || typeof variant !== "object") {
+      return "";
+    }
+
+    if (variant.subtitle) {
+      return String(variant.subtitle).replace(/\s+/g, " ").trim().slice(0, 120);
+    }
+
+    if (Array.isArray(variant.blocks) && variant.blocks.length) {
+      return variant.blocks.length + " block" + (variant.blocks.length === 1 ? "" : "s");
+    }
+
+    return "No subtitle or blocks";
+  }
+
+  function renderSlideVariantReview(review, callbacks, slideIndex) {
+    if (!review || !Array.isArray(review.variants) || !review.variants.length) {
+      return null;
+    }
+
+    var wrapper = document.createElement("div");
+    wrapper.className = "slide-variant-review";
+
+    var header = document.createElement("div");
+    header.className = "slide-variant-review__header";
+
+    var titleWrap = document.createElement("div");
+    var title = document.createElement("div");
+    title.className = "slide-variant-review__title";
+    title.textContent = "AI Variants";
+    titleWrap.appendChild(title);
+
+    var desc = document.createElement("div");
+    desc.className = "slide-variant-review__description";
+    desc.textContent = "Choose one " + String(review.action || "update").replace(/-/g, " ") + " option to apply.";
+    titleWrap.appendChild(desc);
+    header.appendChild(titleWrap);
+
+    var headerActions = document.createElement("div");
+    headerActions.className = "slide-variant-review__actions";
+
+    var regenerateBtn = document.createElement("button");
+    regenerateBtn.type = "button";
+    regenerateBtn.className = "slide-variant-review__btn";
+    regenerateBtn.textContent = "Regenerate";
+    regenerateBtn.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (callbacks && typeof callbacks.onRegenerateSlideVariants === "function") {
+        callbacks.onRegenerateSlideVariants(slideIndex);
+      }
+    });
+    headerActions.appendChild(regenerateBtn);
+
+    var dismissBtn = document.createElement("button");
+    dismissBtn.type = "button";
+    dismissBtn.className = "slide-variant-review__btn";
+    dismissBtn.textContent = "Dismiss";
+    dismissBtn.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (callbacks && typeof callbacks.onDismissSlideVariants === "function") {
+        callbacks.onDismissSlideVariants(slideIndex);
+      }
+    });
+    headerActions.appendChild(dismissBtn);
+    header.appendChild(headerActions);
+
+    wrapper.appendChild(header);
+
+    var list = document.createElement("div");
+    list.className = "slide-variant-review__list";
+
+    review.variants.forEach(function (variant, variantIndex) {
+      var card = document.createElement("div");
+      card.className = "slide-variant-card";
+
+      var meta = document.createElement("div");
+      meta.className = "slide-variant-card__meta";
+      meta.textContent = "Option " + (variantIndex + 1) + " · " + (variant.layout || "content");
+      card.appendChild(meta);
+
+      var cardTitle = document.createElement("div");
+      cardTitle.className = "slide-variant-card__title";
+      cardTitle.textContent = variant.title || "Untitled";
+      card.appendChild(cardTitle);
+
+      var summary = document.createElement("div");
+      summary.className = "slide-variant-card__summary";
+      summary.textContent = summarizeVariant(variant);
+      card.appendChild(summary);
+
+      var applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.className = "slide-variant-card__apply";
+      applyBtn.textContent = "Apply";
+      applyBtn.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (callbacks && typeof callbacks.onApplySlideVariant === "function") {
+          callbacks.onApplySlideVariant(slideIndex, variantIndex);
+        }
+      });
+      card.appendChild(applyBtn);
+
+      list.appendChild(card);
+    });
+
+    wrapper.appendChild(list);
+    return wrapper;
+  }
+
   function createSlideSortable(listEl, state, callbacks) {
     if (!listEl || typeof Sortable === "undefined" || !state || state.getSlides().length < 2) {
       return null;
@@ -629,6 +742,14 @@ var FormUI = (function () {
 
     var body = document.createElement("div");
     body.className = "slide-form-body";
+
+    var review = callbacks && typeof callbacks.getSlideVariantReview === "function"
+      ? callbacks.getSlideVariantReview(idx, slide)
+      : null;
+    var reviewEl = renderSlideVariantReview(review, callbacks, idx);
+    if (reviewEl) {
+      body.appendChild(reviewEl);
+    }
 
     // Layout dropdown
     var layoutField = createFieldInput(

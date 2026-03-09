@@ -18,6 +18,7 @@ const DEFAULT_GENERATION_OPTIONS = {
   slideCount: 5,
 };
 const SLIDE_VARIANT_ACTIONS = ["rewrite", "shorten", "punch-up", "suggest-layout"];
+const MAX_SLIDE_VARIANT_COUNT = 3;
 const GENERATION_OPTION_VALUES = {
   tone: ["professional", "playful", "bold", "technical"],
   density: ["compact", "balanced", "detailed"],
@@ -194,6 +195,49 @@ function normalizeSlideVariantAction(rawAction) {
   return action;
 }
 
+function normalizeSlideVariantCount(rawCount) {
+  const count = rawCount == null ? 1 : Number(rawCount);
+  if (!Number.isInteger(count) || count < 1 || count > MAX_SLIDE_VARIANT_COUNT) {
+    throw createError(
+      `Variant count must be an integer between 1 and ${MAX_SLIDE_VARIANT_COUNT}.`,
+      "ERR_AI_VARIANT_COUNT"
+    );
+  }
+  return count;
+}
+
+function getSlideVariantFlavor(action, variantIndex, variantCount) {
+  const flavorMatrix = {
+    rewrite: [
+      "Prioritize clarity and smooth reading flow.",
+      "Prioritize a fresher hook while keeping the same facts.",
+      "Prioritize cleaner structure and stronger scannability.",
+    ],
+    shorten: [
+      "Make this the shortest, most compressed option.",
+      "Keep it concise but preserve one supporting detail.",
+      "Make it concise while still sounding polished and complete.",
+    ],
+    "punch-up": [
+      "Lead with the strongest benefit or takeaway.",
+      "Increase contrast and urgency without inventing facts.",
+      "Make it more memorable with sharper phrasing and hierarchy.",
+    ],
+    "suggest-layout": [
+      "Favor a layout that improves comparison or contrast.",
+      "Favor a layout that improves hierarchy and emphasis.",
+      "Favor a layout that improves scan speed and readability.",
+    ],
+  };
+
+  const options = flavorMatrix[action] || [];
+  if (!options.length) {
+    return "";
+  }
+
+  return options[Math.min(variantIndex, options.length - 1)] || options[0];
+}
+
 function getSlideObjectCandidate(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -316,6 +360,13 @@ function buildSlideVariantSystemPrompt(options) {
   const action = normalizeSlideVariantAction(safeOptions.action);
   const preserveLayout = Boolean(safeOptions.preserveLayout);
   const generationOptions = normalizeGenerationOptions(safeOptions.generationOptions || safeOptions);
+  const variantCount = normalizeSlideVariantCount(safeOptions.variantCount);
+  const variantIndex = Number.isInteger(Number(safeOptions.variantIndex))
+    ? Math.max(0, Math.min(variantCount - 1, Number(safeOptions.variantIndex)))
+    : 0;
+  const flavorInstruction = variantCount > 1
+    ? getSlideVariantFlavor(action, variantIndex, variantCount)
+    : "";
   const actionGuidance = {
     rewrite: "Rewrite the slide for clarity while preserving the meaning and structure.",
     shorten: "Shorten the slide. Reduce copy volume while preserving the core message.",
@@ -339,6 +390,8 @@ function buildSlideVariantSystemPrompt(options) {
     "",
     "Task:",
     `- Action: ${action}. ${actionGuidance[action]}`,
+    variantCount > 1 ? `- Produce option ${variantIndex + 1} of ${variantCount}. Make it meaningfully distinct from the other possible options.` : null,
+    flavorInstruction ? `- Distinct angle for this option: ${flavorInstruction}` : null,
     `- Keep the slide number exactly ${safeOptions.slideNumber}.`,
     preserveLayout
       ? `- Keep the layout exactly "${safeOptions.currentLayout}".`
@@ -910,6 +963,10 @@ async function generateSlideVariantWithCli(specObject, options) {
   const slides = Array.isArray(specObject && specObject.slides) ? specObject.slides : [];
   const slideIndex = Number(safeOptions.slideIndex);
   const currentSlide = slides[slideIndex];
+  const variantCount = normalizeSlideVariantCount(safeOptions.variantCount);
+  const variantIndex = Number.isInteger(Number(safeOptions.variantIndex))
+    ? Math.max(0, Math.min(variantCount - 1, Number(safeOptions.variantIndex)))
+    : 0;
 
   if (!Number.isInteger(slideIndex) || slideIndex < 0 || slideIndex >= slides.length) {
     throw createError("A valid slide index is required.", "ERR_AI_SLIDE_INDEX");
@@ -923,6 +980,8 @@ async function generateSlideVariantWithCli(specObject, options) {
     ...safeOptions,
     action,
     preserveLayout,
+    variantCount,
+    variantIndex,
     slideNumber: currentSlide.slide || slideIndex + 1,
     currentLayout: currentSlide.layout || "content",
   });
@@ -1017,6 +1076,50 @@ async function generateSlideVariant(specObject, options) {
   return withGenerationLock(() => generateSlideVariantWithCli(cloneValue(specObject), safeOptions));
 }
 
+async function generateSlideVariants(specObject, options) {
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const variantCount = normalizeSlideVariantCount(
+    safeOptions.variantCount == null ? MAX_SLIDE_VARIANT_COUNT : safeOptions.variantCount
+  );
+
+  if (!specObject || typeof specObject !== "object" || Array.isArray(specObject)) {
+    throw createError("A valid spec object is required.", "ERR_AI_SPEC_REQUIRED");
+  }
+
+  if (BACKEND_NAME === "sdk") {
+    throw createError("CARDNEWS_AI_BACKEND=sdk is not implemented yet.", "ERR_AI_UNSUPPORTED_BACKEND");
+  }
+
+  if (BACKEND_NAME !== "cli") {
+    throw createError(`Unsupported CARDNEWS_AI_BACKEND: ${BACKEND_NAME}.`, "ERR_AI_UNSUPPORTED_BACKEND");
+  }
+
+  return withGenerationLock(async () => {
+    const variants = [];
+    const seen = new Set();
+
+    for (let index = 0; index < variantCount; index += 1) {
+      const variant = await generateSlideVariantWithCli(cloneValue(specObject), {
+        ...safeOptions,
+        variantCount,
+        variantIndex: index,
+      });
+      const key = JSON.stringify({
+        layout: variant.layout,
+        title: variant.title,
+        subtitle: variant.subtitle,
+        blocks: variant.blocks,
+      });
+      if (!seen.has(key)) {
+        seen.add(key);
+        variants.push(variant);
+      }
+    }
+
+    return variants;
+  });
+}
+
 async function isAvailable(options) {
   if (BACKEND_NAME === "sdk") {
     return false;
@@ -1034,9 +1137,11 @@ module.exports = {
   MAX_INPUT_LENGTH,
   generateSpec,
   generateSlideVariant,
+  generateSlideVariants,
   isAvailable,
   _private: {
     DEFAULT_GENERATION_OPTIONS,
+    MAX_SLIDE_VARIANT_COUNT,
     PROMPT_REFERENCE,
     SLIDE_VARIANT_ACTIONS,
     buildSlideVariantSystemPrompt,
@@ -1049,10 +1154,12 @@ module.exports = {
     extractSpecFromClaudeResponse,
     formatBlockReference,
     getSlideObjectCandidate,
+    getSlideVariantFlavor,
     isCliAvailable,
     normalizeGenerationOptions,
     normalizeSlideVariant,
     normalizeSlideVariantAction,
+    normalizeSlideVariantCount,
     normalizeGeneratedSpec,
     normalizeInputText,
     parseSlideCandidate,

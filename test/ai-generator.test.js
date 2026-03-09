@@ -147,6 +147,8 @@ describe("ai-generator", () => {
         currentLayout: "content",
         action: "suggest-layout",
         preserveLayout: false,
+        variantIndex: 1,
+        variantCount: 3,
         generationOptions: {
           tone: "technical",
           density: "detailed",
@@ -157,6 +159,7 @@ describe("ai-generator", () => {
 
       assert.match(prompt, /Action: suggest-layout/i);
       assert.match(prompt, /You may change the layout/i);
+      assert.match(prompt, /Produce option 2 of 3/i);
       assert.match(prompt, /Tone preference: technical/i);
       assert.match(prompt, /Narrative intent: action/i);
       assert.match(prompt, /Keep the slide number exactly 2/i);

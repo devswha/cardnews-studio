@@ -16,6 +16,7 @@ const { TEMPLATE_PRESETS } = require("./src/template-presets");
 const {
   generateSpec,
   generateSlideVariant,
+  generateSlideVariants,
   isAvailable: isAiAvailable,
   MAX_INPUT_LENGTH: MAX_GENERATE_TEXT_LENGTH,
 } = require("./src/ai-generator");
@@ -31,6 +32,7 @@ const AI_DENSITY_OPTIONS = ["compact", "balanced", "detailed"];
 const AI_INTENT_OPTIONS = ["awareness", "explain", "compare", "action"];
 const AI_SLIDE_COUNT_OPTIONS = [3, 5, 7];
 const AI_SLIDE_ACTIONS = ["rewrite", "shorten", "punch-up", "suggest-layout"];
+const AI_SLIDE_VARIANT_COUNT_MAX = 3;
 
 function normalizeSpecSlug(rawSlug) {
   if (typeof rawSlug !== "string" || !SPEC_SLUG_PATTERN.test(rawSlug)) {
@@ -150,6 +152,14 @@ function normalizeSlideAction(rawAction) {
   return action;
 }
 
+function normalizeSlideVariantCount(rawCount) {
+  const count = rawCount == null ? AI_SLIDE_VARIANT_COUNT_MAX : Number(rawCount);
+  if (!Number.isInteger(count) || count < 1 || count > AI_SLIDE_VARIANT_COUNT_MAX) {
+    throw new Error(`Variant count must be between 1 and ${AI_SLIDE_VARIANT_COUNT_MAX}.`);
+  }
+  return count;
+}
+
 function buildTemplatePayloads() {
   return TEMPLATE_PRESETS.map((template) => {
     const spec = cloneValue(template.spec || {});
@@ -180,6 +190,7 @@ function statusForAiError(error) {
     case "ERR_AI_SPEC_REQUIRED":
     case "ERR_AI_ACTION_INVALID":
     case "ERR_AI_SLIDE_INDEX":
+    case "ERR_AI_VARIANT_COUNT":
       return 400;
     case "ERR_AI_UNAVAILABLE":
       return 503;
@@ -370,6 +381,58 @@ function createApp() {
         generationOptions,
       });
       res.json({ slide });
+    } catch (err) {
+      res.status(statusForAiError(err)).json(toErrorPayload(err));
+    }
+  });
+
+  app.post("/api/generate-slide-variants", async (req, res) => {
+    const body =
+      req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+        ? req.body
+        : {};
+
+    if (!body.spec || typeof body.spec !== "object" || Array.isArray(body.spec)) {
+      return res.status(400).json({ error: "Spec is required." });
+    }
+
+    const slideIndex = Number(body.slideIndex);
+    if (!Number.isInteger(slideIndex)) {
+      return res.status(400).json({ error: "slideIndex must be an integer." });
+    }
+
+    let action;
+    let generationOptions;
+    let variantCount;
+    try {
+      action = normalizeSlideAction(body.action);
+      generationOptions = normalizeGenerateOptions(body.generationOptions);
+      variantCount = normalizeSlideVariantCount(body.count);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    const validation = SpecValidation.validateSpec(body.spec, BLOCK_SCHEMAS);
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: SpecValidation.summarize(validation),
+        validation: validation.errors,
+      });
+    }
+
+    if (slideIndex < 0 || slideIndex >= body.spec.slides.length) {
+      return res.status(400).json({ error: "slideIndex is out of range." });
+    }
+
+    try {
+      const variants = await generateSlideVariants(body.spec, {
+        slideIndex,
+        action,
+        blockSchemas: BLOCK_SCHEMAS,
+        generationOptions,
+        variantCount,
+      });
+      res.json({ variants });
     } catch (err) {
       res.status(statusForAiError(err)).json(toErrorPayload(err));
     }

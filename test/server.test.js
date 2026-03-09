@@ -380,6 +380,60 @@ describe("server AI and URL routes", () => {
     );
   });
 
+  it("returns multiple slide variants from /api/generate-slide-variants", async () => {
+    class MockAiGeneratorError extends Error {
+      constructor(code, message) {
+        super(message);
+        this.code = code;
+      }
+    }
+
+    const calls = [];
+    const aiGenerator = {
+      AiGeneratorError: MockAiGeneratorError,
+      isAvailable: async () => true,
+      generateSpec: async () => GENERATED_SPEC,
+      generateSlideVariant: async () => GENERATED_SLIDE_VARIANT,
+      generateSlideVariants: async (spec, options) => {
+        calls.push({ spec, options });
+        return [
+          GENERATED_SLIDE_VARIANT,
+          { ...GENERATED_SLIDE_VARIANT, title: "Alternative headline", layout: "content" },
+        ];
+      },
+    };
+
+    await withMockedServer(
+      {
+        "./src/ai-generator": aiGenerator,
+        "./src/ai-generator.js": aiGenerator,
+      },
+      async (mockBaseUrl) => {
+        const res = await fetch(mockBaseUrl + "/api/generate-slide-variants", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spec: SLIDE_VARIANT_SPEC,
+            slideIndex: 1,
+            action: "rewrite",
+            count: 3,
+          }),
+        });
+
+        assert.equal(res.status, 200);
+        assert.deepEqual(await res.json(), {
+          variants: [
+            GENERATED_SLIDE_VARIANT,
+            { ...GENERATED_SLIDE_VARIANT, title: "Alternative headline", layout: "content" },
+          ],
+        });
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].options.slideIndex, 1);
+        assert.equal(calls[0].options.variantCount, 3);
+      }
+    );
+  });
+
   it("returns fetched article content from /api/fetch-url", async () => {
     class MockUrlFetchError extends Error {
       constructor(code, message) {
