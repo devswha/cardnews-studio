@@ -88,9 +88,9 @@ PORT=4567 npm start
 웹 에디터 없이 터미널에서 직접 렌더링할 수도 있습니다.
 
 ```bash
-node render.js my-spec.yaml              # 전체 슬라이드
-node render.js my-spec.yaml --slide 3    # 3번 슬라이드만
-node render.js my-spec.yaml --theme warm # 테마 적용
+node render.js examples/hello.yaml              # 전체 슬라이드
+node render.js examples/hello.yaml --slide 3    # 3번 슬라이드만
+node render.js examples/hello.yaml --theme warm # 테마 적용
 ```
 
 결과물은 `output/` 폴더에 PNG 파일로 저장됩니다.
@@ -138,12 +138,33 @@ slides:
     blocks: []
 ```
 
+## Claude Code 스킬
+
+[Claude Code](https://claude.ai/claude-code) 사용자라면, 스킬을 설치해서 텍스트나 마크다운을 넘기면 카드뉴스를 자동 생성할 수 있습니다.
+
+```bash
+mkdir -p ~/.claude/skills/cardnews
+cp SKILL.md ~/.claude/skills/cardnews/
+```
+
+사용법:
+
+```
+/cardnews
+
+아래 내용으로 카드뉴스를 만들어줘:
+[마크다운 또는 텍스트 붙여넣기]
+```
+
 ## 프로젝트 구조
 
 ```text
 cardnews-studio/
 ├── render.js          # CLI 렌더러
 ├── server.js          # 웹 에디터 서버
+├── CLAUDE.md          # Claude Code 프로젝트 가이드
+├── SKILL.md           # Claude Code 스킬
+├── examples/          # 예제 YAML 스펙
 ├── public/            # 에디터 프론트엔드
 ├── src/               # 핵심 로직 (파서, 렌더러, 블록)
 ├── styles/            # CSS 테마

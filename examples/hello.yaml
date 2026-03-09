@@ -1,0 +1,105 @@
+meta:
+  title: "cardnews-studio\n시작 가이드"
+  subtitle: "YAML로 카드뉴스 만들기"
+  author: cardnews-studio
+  author_handle: "@cardnews-studio"
+  total_slides: 5
+  created_at: "2026-03-09"
+
+slides:
+  - slide: 1
+    layout: cover
+    title: |-
+      cardnews-studio
+      시작 가이드
+    subtitle: "YAML로 카드뉴스 만들기"
+    blocks: []
+
+  - slide: 2
+    layout: problem
+    title: 이런 고민, 있지 않나요?
+    subtitle: 카드뉴스 제작의 어려움
+    blocks:
+      - type: card-list
+        items:
+          - emoji: "🎨"
+            title: 디자인 툴이 어렵다
+            description: |-
+              포토샵, 피그마까지 배워야 하나?
+              간단한 카드뉴스인데...
+          - emoji: "🔄"
+            title: 매번 반복 작업
+            description: |-
+              같은 레이아웃에 내용만 바꾸는데
+              매번 수작업으로 만든다
+          - emoji: "📐"
+            title: 일관성 유지가 힘들다
+            highlight_word: 일관성
+            description: |-
+              슬라이드마다 폰트, 여백, 색상이
+              조금씩 달라진다
+
+  - slide: 3
+    layout: solution
+    title: 해결책
+    subtitle: 텍스트만 쓰면 이미지가 나온다
+    blocks:
+      - type: terminal-block
+        title: Terminal
+        lines:
+          - type: command
+            text: "node render.js examples/hello.yaml"
+          - type: output
+            text: "Rendered 5 slides → output/hello/"
+      - type: highlight-banner
+        content: YAML 파일에 내용을 적으면, PNG 이미지가 자동 생성됩니다
+        bold_part: PNG 이미지가 자동 생성
+
+  - slide: 4
+    layout: howto
+    title: 사용법
+    subtitle: 3단계면 충분합니다
+    blocks:
+      - type: step-list
+        items:
+          - step: 1
+            emoji: "📝"
+            title: YAML 작성
+            description: |-
+              제목, 슬라이드, 블록을
+              텍스트로 작성합니다
+            code: "meta:\n  title: 내 카드뉴스"
+          - step: 2
+            emoji: "🖥️"
+            title: 웹 에디터에서 수정
+            description: |-
+              브라우저에서 실시간으로
+              내용을 수정하고 미리봅니다
+            code: "npm start"
+          - step: 3
+            emoji: "🖼️"
+            title: 렌더링
+            description: |-
+              버튼 하나로
+              PNG 이미지를 생성합니다
+            code: "node render.js spec.yaml"
+
+  - slide: 5
+    layout: closing
+    title: |-
+      지금 바로
+      시작해보세요
+    subtitle: "github.com/devswha/cardnews-studio"
+    blocks:
+      - type: icon-grid
+        columns: 3
+        items:
+          - emoji: "📄"
+            title: "16가지 블록"
+            description: "다양한 콘텐츠 표현"
+          - emoji: "🎨"
+            title: "테마 지원"
+            description: "8bit, warm 등"
+          - emoji: "🤖"
+            title: "AI 연동"
+            description: "커버 자동 생성"
